@@ -6,9 +6,20 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 
+// Resolve the fabric-samples path (follows symlinks)
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..', '..');
-const FABRIC_SAMPLES_DIR = path.join(PROJECT_ROOT, 'fabric-network', 'fabric-samples');
+const FABRIC_LINK = path.join(PROJECT_ROOT, 'fabric-network', 'fabric-samples');
+
+// Follow symlink to get the real path (Docker-accessible)
+let FABRIC_SAMPLES_DIR;
+try {
+    FABRIC_SAMPLES_DIR = fs.realpathSync(FABRIC_LINK);
+} catch {
+    FABRIC_SAMPLES_DIR = FABRIC_LINK;
+}
+
 const TEST_NETWORK_DIR = path.join(FABRIC_SAMPLES_DIR, 'test-network');
 const CRYPTO_PATH = path.join(TEST_NETWORK_DIR, 'organizations', 'peerOrganizations', 'org1.example.com');
 

@@ -4,7 +4,7 @@ node_modules/
 # Environment
 .env
 
-# Fabric crypto materials
+fabric-network/fabric-samples
 fabric-network/fabric-samples/
 fabric-network/bin/
 fabric-network/config/

@@ -9,8 +9,15 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-TEST_NETWORK_DIR="${SCRIPT_DIR}/fabric-samples/test-network"
-CHAINCODE_DIR="${PROJECT_ROOT}/chaincode"
+
+# Use the real (resolved) path for fabric-samples (not the symlink)
+# This is needed because Docker on macOS cannot mount from ~/Desktop
+FABRIC_SAMPLES_DIR="$(cd "${SCRIPT_DIR}/fabric-samples" && pwd -P)"
+TEST_NETWORK_DIR="${FABRIC_SAMPLES_DIR}/test-network"
+
+# Chaincode is copied to a Docker-accessible location
+CHAINCODE_DIR="${FABRIC_SAMPLES_DIR}/chaincode-supplychain"
+
 CHANNEL_NAME="mychannel"
 CHAINCODE_NAME="supplychain"
 CHAINCODE_VERSION="1.0"
@@ -19,6 +26,10 @@ CHAINCODE_SEQUENCE="1"
 echo "========================================"
 echo "  Starting Fabric Network"
 echo "========================================"
+echo ""
+echo "  Fabric samples: ${FABRIC_SAMPLES_DIR}"
+echo "  Test network:   ${TEST_NETWORK_DIR}"
+echo "  Chaincode:      ${CHAINCODE_DIR}"
 
 # Check prerequisites
 if [ ! -d "${TEST_NETWORK_DIR}" ]; then
@@ -27,14 +38,22 @@ if [ ! -d "${TEST_NETWORK_DIR}" ]; then
     exit 1
 fi
 
+# Sync chaincode from project to Docker-accessible location
+echo ""
+echo "Syncing chaincode to Docker-accessible location..."
+rm -rf "${CHAINCODE_DIR}"
+cp -r "${PROJECT_ROOT}/chaincode" "${CHAINCODE_DIR}"
+rm -rf "${CHAINCODE_DIR}/node_modules"
+find "${CHAINCODE_DIR}" -name '.DS_Store' -delete
+
 # Add Fabric binaries to PATH
-export PATH="${SCRIPT_DIR}/fabric-samples/bin:$PATH"
-export FABRIC_CFG_PATH="${SCRIPT_DIR}/fabric-samples/config/"
+export PATH="${FABRIC_SAMPLES_DIR}/bin:$PATH"
+export FABRIC_CFG_PATH="${FABRIC_SAMPLES_DIR}/config/"
 
 echo ""
 echo "Step 1: Bringing down any existing network..."
 cd "${TEST_NETWORK_DIR}"
-./network.sh down
+./network.sh down 2>/dev/null || true
 
 echo ""
 echo "Step 2: Starting the network with Certificate Authorities and CouchDB..."
@@ -42,14 +61,6 @@ echo "Step 2: Starting the network with Certificate Authorities and CouchDB..."
 
 echo ""
 echo "Step 3: Deploying chaincode..."
-
-# Install chaincode dependencies
-echo "Installing chaincode npm dependencies..."
-cd "${CHAINCODE_DIR}"
-npm install
-cd "${TEST_NETWORK_DIR}"
-
-# Deploy chaincode using the test-network script
 ./network.sh deployCC \
     -ccn ${CHAINCODE_NAME} \
     -ccp "${CHAINCODE_DIR}" \
@@ -59,7 +70,7 @@ cd "${TEST_NETWORK_DIR}"
     -ccs ${CHAINCODE_SEQUENCE}
 
 echo ""
-echo "Step 4: Initializing the ledger..."
+echo "Step 5: Initializing the ledger..."
 
 # Set environment for Org1
 export CORE_PEER_TLS_ENABLED=true
@@ -72,17 +83,19 @@ peer chaincode invoke \
     -o localhost:7050 \
     --ordererTLSHostnameOverride orderer.example.com \
     --tls \
-    --cafile "${TEST_NETWORK_DIR}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" \
+    --cafile "${TEST_NETWORK_DIR}/organizations/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem" \
     -C ${CHANNEL_NAME} \
     -n ${CHAINCODE_NAME} \
     --peerAddresses localhost:7051 \
-    --tlsRootCertFiles "${TEST_NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" \
+    --tlsRootCertFiles "${TEST_NETWORK_DIR}/organizations/peerOrganizations/org1.example.com/tlsca/tlsca.org1.example.com-cert.pem" \
     --peerAddresses localhost:9051 \
-    --tlsRootCertFiles "${TEST_NETWORK_DIR}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" \
-    -c '{"function":"initLedger","Args":[]}'
+    --tlsRootCertFiles "${TEST_NETWORK_DIR}/organizations/peerOrganizations/org2.example.com/tlsca/tlsca.org2.example.com-cert.pem" \
+    -c '{"Args":["initLedger"]}'
+
+sleep 3
 
 echo ""
-echo "Step 5: Verifying deployment..."
+echo "Step 6: Verifying deployment..."
 
 peer chaincode query \
     -C ${CHANNEL_NAME} \
