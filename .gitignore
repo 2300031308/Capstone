@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+
+# Fabric crypto materials
+fabric-network/fabric-samples/
+fabric-network/bin/
+fabric-network/config/
+fabric-network/builders/
+fabric-network/install-fabric.sh.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build
+dist/
+build/
+
+# Logs
+*.log
+logs/
+
+# Coverage
+coverage/
+
+# Docker volumes
+data/
