@@ -6,6 +6,7 @@
 'use strict';
 
 const fabricService = require('../services/fabricService');
+const { logTransactionActivity } = require('./networkController');
 
 /**
  * Register a new product.
@@ -22,6 +23,18 @@ async function registerProduct(req, res, next) {
             batchNumber,
             manufacturer
         );
+
+        // Record confirmed blockchain transaction in real-time activity stream
+        logTransactionActivity({
+            type: 'REGISTER_PRODUCT',
+            productId,
+            productName,
+            actor: manufacturer,
+            currentOwner: manufacturer,
+            status: 'COMMITTED',
+            timestamp: result?.createdAt || new Date().toISOString(),
+            isGenesis: false,
+        });
 
         res.status(201).json({
             success: true,

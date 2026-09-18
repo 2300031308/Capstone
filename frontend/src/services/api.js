@@ -29,3 +29,9 @@ export const productApi = {
   transfer: (productId, transferData) => api.post(`/products/${productId}/transfer`, transferData),
   getHistory: (productId) => api.get(`/products/${productId}/history`),
 };
+
+export const networkApi = {
+  getStatus: () => api.get('/network/status'),
+  getActivity: () => api.get('/network/activity'),
+};
+

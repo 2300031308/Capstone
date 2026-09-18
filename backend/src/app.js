@@ -7,6 +7,7 @@
 const express = require('express');
 const cors = require('cors');
 const productRoutes = require('./routes/productRoutes');
+const networkRoutes = require('./routes/networkRoutes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -33,6 +34,7 @@ app.get('/api/health', (req, res) => {
 
 // Routes
 app.use('/api/products', productRoutes);
+app.use('/api/network', networkRoutes);
 
 // 404 handler
 app.use((req, res) => {
