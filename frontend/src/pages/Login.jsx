@@ -55,9 +55,9 @@ export default function Login() {
           <div className="brand-logo-icon-wrap">
             <ShieldCheck size={28} color="var(--primary)" />
           </div>
-          <h2>Sign In to Platform</h2>
+          <h2>Sign In to TraceChain</h2>
           <p className="login-subtitle">
-            SupplyChain Provenance &bull; Hyperledger Fabric Gateway
+            Enterprise Supply-Chain Provenance Console
           </p>
         </div>
 
@@ -147,7 +147,7 @@ export default function Login() {
 
         <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
           <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>
-            Protected by Hyperledger Fabric X.509 cryptographic membership controls
+            Enterprise-grade Cryptographic Access Control &bull; Verified Organization Signatures
           </p>
         </div>
       </div>

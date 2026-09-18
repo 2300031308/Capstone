@@ -6,54 +6,24 @@ import {
   Lock,
   Mail,
   User,
-  Building,
   KeyRound,
   ArrowRight,
   CheckCircle2,
   AlertCircle,
   ArrowLeft,
-  Info,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
-
-const ROLE_OPTIONS = [
-  {
-    id: 'customer',
-    label: 'Customer / Consumer',
-    desc: 'Public verification portal for product provenance and authenticity.',
-    requiresKey: false,
-    defaultOrg: 'Consumer',
-  },
-  {
-    id: 'manufacturer',
-    label: 'Manufacturer (Org1MSP)',
-    desc: 'Authorized to register original physical assets and commit origin blocks.',
-    requiresKey: true,
-    defaultOrg: 'ManufacturerOrg',
-  },
-  {
-    id: 'distributor',
-    label: 'Distributor (Org2MSP)',
-    desc: 'Authorized to accept freight custody and process supply chain transfers.',
-    requiresKey: true,
-    defaultOrg: 'DistributorOrg',
-  },
-  {
-    id: 'retailer',
-    label: 'Retailer (Org2MSP)',
-    desc: 'Authorized for store inventory validation and consumer point-of-sale handoff.',
-    requiresKey: true,
-    defaultOrg: 'RetailerOrg',
-  },
-];
 
 export default function RegisterAccount() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState('customer');
-  const [organization, setOrganization] = useState('Consumer');
-  const [enterpriseKey, setEnterpriseKey] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [hasOrgCode, setHasOrgCode] = useState(false);
+  const [accessCode, setAccessCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -61,25 +31,12 @@ export default function RegisterAccount() {
   const { register } = useAuth();
   const navigate = useNavigate();
 
-  const activeRoleOption = ROLE_OPTIONS.find((r) => r.id === role) || ROLE_OPTIONS[0];
-
-  const handleRoleChange = (newRole) => {
-    setRole(newRole);
-    const selected = ROLE_OPTIONS.find((r) => r.id === newRole);
-    if (selected) {
-      setOrganization(selected.defaultOrg);
-      if (!selected.requiresKey) {
-        setEnterpriseKey('');
-      }
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
 
-    if (!name || !email || !password) {
-      setError('Please fill in all mandatory fields.');
+    if (!name.trim() || !email.trim() || !password) {
+      setError('Please fill in all required fields.');
       return;
     }
 
@@ -89,34 +46,35 @@ export default function RegisterAccount() {
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match. Please verify your confirmation password.');
+      setError('Passwords do not match. Please verify confirmation password.');
       return;
     }
 
-    if (activeRoleOption.requiresKey && !enterpriseKey.trim()) {
-      setError(`Privileged enterprise role "${activeRoleOption.label}" requires an Enterprise Authorization Key.`);
+    if (hasOrgCode && !accessCode.trim()) {
+      setError('Please enter your Organization Access Code, or uncheck the option to register as a consumer.');
       return;
     }
 
     try {
       setLoading(true);
+
+      // Server-Side Controlled Onboarding:
+      // Client never sends role or organization. The server assigns permissions strictly from accessCode (or defaults to customer).
       await register({
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password,
         confirmPassword,
-        role,
-        organization: organization.trim(),
-        enterpriseKey: enterpriseKey.trim(),
+        accessCode: hasOrgCode ? accessCode.trim() : undefined,
       });
 
       setSuccess(true);
       setTimeout(() => {
         navigate('/login');
-      }, 1500);
+      }, 1600);
     } catch (err) {
       console.error('Registration error:', err);
-      setError(err.message || 'Registration failed. Please check your credentials and authorization key.');
+      setError(err.message || 'Registration failed. Please check your credentials or organization code.');
     } finally {
       setLoading(false);
     }
@@ -124,21 +82,21 @@ export default function RegisterAccount() {
 
   return (
     <div className="login-container">
-      <div style={{ maxWidth: '520px', width: '100%', marginBottom: '12px' }}>
+      <div style={{ maxWidth: '480px', width: '100%', marginBottom: '12px' }}>
         <Link to="/" className="back-to-home-link">
           <ArrowLeft size={14} />
           <span>Back to Overview</span>
         </Link>
       </div>
 
-      <div className="login-card modern-card" style={{ maxWidth: '520px', width: '100%' }}>
+      <div className="login-card modern-card" style={{ maxWidth: '480px', width: '100%' }}>
         <div className="login-brand-header">
           <div className="brand-logo-icon-wrap">
             <ShieldCheck size={28} color="var(--primary)" />
           </div>
-          <h2>Create Account</h2>
+          <h2>Create TraceChain Account</h2>
           <p className="login-subtitle">
-            Join the Permissioned Supply-Chain Provenance Network
+            Enterprise Supply-Chain Provenance Network
           </p>
         </div>
 
@@ -159,147 +117,173 @@ export default function RegisterAccount() {
         )}
 
         <form onSubmit={handleSubmit} className="login-form">
-          {/* Name and Email */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-            <div className="form-group">
-              <label className="form-label">
-                <User size={13} color="var(--text-muted)" />
-                <span>Full Name</span>
-              </label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="e.g. Jane Doe"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <Mail size={13} color="var(--text-muted)" />
-                <span>Email Address</span>
-              </label>
-              <input
-                type="email"
-                className="form-control"
-                placeholder="jane@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
+          {/* Full Name */}
+          <div className="form-group" style={{ marginBottom: '14px' }}>
+            <label className="form-label" htmlFor="register-name">
+              <User size={13} color="var(--text-muted)" />
+              <span>Full Name</span>
+            </label>
+            <input
+              id="register-name"
+              type="text"
+              className="form-control"
+              placeholder="e.g. Alex Morgan"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              disabled={loading || success}
+              autoComplete="name"
+            />
           </div>
 
-          {/* Passwords */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-            <div className="form-group">
-              <label className="form-label">
-                <Lock size={13} color="var(--text-muted)" />
-                <span>Password</span>
-              </label>
+          {/* Email Address */}
+          <div className="form-group" style={{ marginBottom: '14px' }}>
+            <label className="form-label" htmlFor="register-email">
+              <Mail size={13} color="var(--text-muted)" />
+              <span>Email Address</span>
+            </label>
+            <input
+              id="register-email"
+              type="email"
+              className="form-control"
+              placeholder="name@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={loading || success}
+              autoComplete="email"
+            />
+          </div>
+
+          {/* Password */}
+          <div className="form-group" style={{ marginBottom: '14px' }}>
+            <label className="form-label" htmlFor="register-password">
+              <Lock size={13} color="var(--text-muted)" />
+              <span>Password</span>
+            </label>
+            <div style={{ position: 'relative' }}>
               <input
-                type="password"
+                id="register-password"
+                type={showPassword ? 'text' : 'password'}
                 className="form-control"
-                placeholder="Min 6 characters"
+                placeholder="At least 6 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={loading || success}
+                autoComplete="new-password"
+                style={{ paddingRight: '38px' }}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
+          </div>
 
-            <div className="form-group">
-              <label className="form-label">
-                <Lock size={13} color="var(--text-muted)" />
-                <span>Confirm Password</span>
-              </label>
+          {/* Confirm Password */}
+          <div className="form-group" style={{ marginBottom: '16px' }}>
+            <label className="form-label" htmlFor="register-confirm-password">
+              <Lock size={13} color="var(--text-muted)" />
+              <span>Confirm Password</span>
+            </label>
+            <div style={{ position: 'relative' }}>
               <input
-                type="password"
+                id="register-confirm-password"
+                type={showConfirmPassword ? 'text' : 'password'}
                 className="form-control"
-                placeholder="Confirm password"
+                placeholder="Re-enter your password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                disabled={loading || success}
+                autoComplete="new-password"
+                style={{ paddingRight: '38px' }}
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+              >
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 
-          {/* Role Selection */}
-          <div className="form-group" style={{ marginBottom: '14px' }}>
-            <label className="form-label" style={{ marginBottom: '6px' }}>
-              <span>Participant Access Tier</span>
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              {ROLE_OPTIONS.map((opt) => {
-                const isSelected = role === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => handleRoleChange(opt.id)}
-                    className={`btn btn-ghost role-card-opt ${isSelected ? 'selected' : ''}`}
-                  >
-                    <strong style={{ fontSize: '0.82rem', color: 'var(--text-main)' }}>{opt.label}</strong>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      {opt.requiresKey ? 'Authorized Enterprise' : 'Open Registration'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Conditional Enterprise Onboarding Key */}
-          {activeRoleOption.requiresKey ? (
-            <div style={{ padding: '12px', background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '6px', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                <KeyRound size={14} color="var(--primary)" />
-                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                  Controlled Onboarding Verification
+          {/* Enterprise Onboarding Toggle */}
+          <div style={{ padding: '12px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '18px' }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', margin: 0 }}>
+              <input
+                type="checkbox"
+                checked={hasOrgCode}
+                onChange={(e) => {
+                  setHasOrgCode(e.target.checked);
+                  if (!e.target.checked) setAccessCode('');
+                }}
+                style={{ marginTop: '3px' }}
+                disabled={loading || success}
+              />
+              <div>
+                <span style={{ fontSize: '0.86rem', fontWeight: 600, color: '#1e293b', display: 'block' }}>
+                  Register with an Organization Access Code
+                </span>
+                <span style={{ fontSize: '0.76rem', color: '#64748b', display: 'block', marginTop: '2px' }}>
+                  Required for enterprise accounts (Manufacturer, Logistics, Retail). If you do not have a code, leave this unchecked to register as a standard consumer.
                 </span>
               </div>
-              <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', margin: '0 0 10px' }}>
-                Privileged enterprise roles require an authorization key issued by the consortium network administrator.
-              </p>
+            </label>
 
-              <div className="form-group" style={{ marginBottom: '10px' }}>
-                <label className="form-label" style={{ fontSize: '0.76rem' }}>
-                  Enterprise Authorization Key
+            {hasOrgCode && (
+              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+                <label className="form-label" htmlFor="access-code-input" style={{ fontSize: '0.8rem', marginBottom: '6px' }}>
+                  <KeyRound size={13} color="var(--primary)" />
+                  <span>Organization Access Code</span>
                 </label>
                 <input
+                  id="access-code-input"
                   type="text"
                   className="form-control"
-                  placeholder="e.g. MFG-AUTH-2026 / DIST-AUTH-2026 / RTL-AUTH-2026"
-                  value={enterpriseKey}
-                  onChange={(e) => setEnterpriseKey(e.target.value)}
-                  required
+                  placeholder="Enter code provided by your organization"
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value)}
+                  required={hasOrgCode}
+                  disabled={loading || success}
+                  autoComplete="off"
+                  spellCheck="false"
                 />
+                <span style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                  Role, organization, and cryptographic permissions are assigned server-side from verified access codes.
+                </span>
               </div>
-
-              <div className="form-group" style={{ marginBottom: '0' }}>
-                <label className="form-label" style={{ fontSize: '0.76rem' }}>
-                  <Building size={12} color="var(--text-muted)" />
-                  <span>Organization Name</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="e.g. Apex Manufacturing Inc."
-                  value={organization}
-                  onChange={(e) => setOrganization(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-          ) : (
-            <div style={{ padding: '10px 12px', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '6px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Info size={14} color="var(--success)" />
-              <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
-                Consumer accounts are activated immediately with zero-trust verification permissions.
-              </span>
-            </div>
-          )}
+            )}
+          </div>
 
           <button
             type="submit"
@@ -312,11 +296,17 @@ export default function RegisterAccount() {
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
+        <div style={{ textAlign: 'center', marginTop: '18px', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
           Already have an account?{' '}
           <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 600 }}>
             Sign In
           </Link>
+        </div>
+
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>
+            Enterprise-grade Cryptographic Access Control &bull; Controlled Onboarding
+          </p>
         </div>
       </div>
     </div>

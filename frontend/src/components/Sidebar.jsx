@@ -98,8 +98,8 @@ export default function Sidebar() {
           <Building2 size={18} color="#93c5fd" />
         </div>
         <div className="brand-text">
-          <h2>Hyperledger Fabric</h2>
-          <p>{role === 'customer' ? 'Consumer Portal' : 'Consortium Network'}</p>
+          <h2>TraceChain</h2>
+          <p>{role === 'customer' ? 'Consumer Portal' : 'Enterprise Console'}</p>
         </div>
       </div>
 

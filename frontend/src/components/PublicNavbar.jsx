@@ -27,8 +27,8 @@ export default function PublicNavbar() {
             <ShieldCheck size={22} color="var(--primary)" />
           </div>
           <div className="brand-text-wrap">
-            <span className="brand-main-title">SupplyChain Provenance</span>
-            <span className="brand-sub-tag">Hyperledger Fabric 2.5</span>
+            <span className="brand-main-title">TraceChain</span>
+            <span className="brand-sub-tag">Enterprise Provenance</span>
           </div>
         </Link>
 

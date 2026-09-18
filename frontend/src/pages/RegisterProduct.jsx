@@ -2,6 +2,18 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { productApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import {
+  PackagePlus,
+  ShieldCheck,
+  CheckCircle2,
+  AlertCircle,
+  Building,
+  Info,
+  ChevronDown,
+  ChevronUp,
+  Cpu,
+  ArrowRight,
+} from 'lucide-react';
 
 export default function RegisterProduct() {
   const navigate = useNavigate();
@@ -10,12 +22,14 @@ export default function RegisterProduct() {
     productId: '',
     productName: '',
     batchNumber: '',
-    manufacturer: user?.organization || 'ApexManufacturing',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitPhase, setSubmitPhase] = useState('');
   const [error, setError] = useState(null);
   const [receipt, setReceipt] = useState(null);
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+
+  const manufacturerOrg = user?.organization || 'ManufacturerOrg';
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -26,25 +40,33 @@ export default function RegisterProduct() {
     e.preventDefault();
     setError(null);
     setReceipt(null);
-    setIsSubmitting(true);
 
-    // Multi-phase feedback reflecting real Hyperledger Fabric transaction lifecycle
-    setSubmitPhase('Creating transaction proposal with client identity (Org1MSP)...');
+    const cleanId = formData.productId.trim();
+    const cleanName = formData.productName.trim();
+    const cleanBatch = formData.batchNumber.trim();
+
+    if (!cleanId || !cleanName || !cleanBatch) {
+      setError('Please fill in Product ID, Product Name, and Batch Number.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitPhase('Creating certified transaction proposal with enterprise identity...');
 
     const phase2Timer = setTimeout(() => {
-      setSubmitPhase('Endorsing proposal across peers (peer0.org1 & peer0.org2)...');
-    }, 900);
+      setSubmitPhase('Collecting cryptographic endorsements from network peers...');
+    }, 1000);
 
     const phase3Timer = setTimeout(() => {
-      setSubmitPhase('Ordering transaction via Raft consensus and committing to World State...');
+      setSubmitPhase('Ordering transaction and committing origin block to the ledger...');
     }, 2200);
 
     try {
       const response = await productApi.register({
-        productId: formData.productId.trim(),
-        productName: formData.productName.trim(),
-        batchNumber: formData.batchNumber.trim(),
-        manufacturer: formData.manufacturer.trim(),
+        productId: cleanId,
+        productName: cleanName,
+        batchNumber: cleanBatch,
+        manufacturer: manufacturerOrg,
       });
 
       clearTimeout(phase2Timer);
@@ -54,11 +76,11 @@ export default function RegisterProduct() {
         setReceipt(response.data);
       } else {
         setReceipt({
-          productId: formData.productId.trim(),
-          productName: formData.productName.trim(),
-          batchNumber: formData.batchNumber.trim(),
-          manufacturer: formData.manufacturer.trim(),
-          currentOwner: formData.manufacturer.trim(),
+          productId: cleanId,
+          productName: cleanName,
+          batchNumber: cleanBatch,
+          manufacturer: manufacturerOrg,
+          currentOwner: manufacturerOrg,
           status: 'REGISTERED',
           createdAt: new Date().toISOString(),
         });
@@ -69,18 +91,17 @@ export default function RegisterProduct() {
         productId: '',
         productName: '',
         batchNumber: '',
-        manufacturer: 'ManufacturerOrg',
       });
     } catch (err) {
       clearTimeout(phase2Timer);
       clearTimeout(phase3Timer);
       console.error('Registration failed:', err);
 
-      let cleanMsg = err.message || 'Failed to submit transaction to Fabric';
-      if (cleanMsg.includes('already exists')) {
-        cleanMsg = `Product ID "${formData.productId}" already exists on the ledger. Product IDs must be globally unique.`;
+      let cleanMsg = err.message || 'Failed to submit transaction to ledger';
+      if (cleanMsg.includes('already exists') || cleanMsg.includes('already registered')) {
+        cleanMsg = `Product ID "${cleanId}" already exists on the ledger. Product IDs must be globally unique.`;
       } else if (cleanMsg.includes('ABORTED') || cleanMsg.includes('failed to endorse')) {
-        cleanMsg = `Transaction rejected by endorsing peers: Product ID "${formData.productId}" is likely already registered on the blockchain.`;
+        cleanMsg = `Transaction rejected by endorsing peers: Product ID "${cleanId}" is already committed or endorsement failed.`;
       }
       setError(cleanMsg);
     } finally {
@@ -96,7 +117,7 @@ export default function RegisterProduct() {
         <div>
           <h2 className="page-title">Register Product on Ledger</h2>
           <p className="page-subtitle">
-            Submit an immutable origin record to Hyperledger Fabric Channel: <code>mychannel</code>
+            Create an immutable digital origin record for certified physical assets
           </p>
         </div>
         <button className="btn btn-secondary btn-sm" onClick={() => navigate('/products')}>
@@ -108,11 +129,13 @@ export default function RegisterProduct() {
       {receipt && (
         <div className="receipt-card modern-card">
           <div className="receipt-header">
-            <div className="receipt-badge-icon">✅</div>
+            <div className="receipt-badge-icon">
+              <CheckCircle2 size={24} color="var(--success)" />
+            </div>
             <div>
-              <h3>Blockchain Transaction Committed</h3>
+              <h3>Ledger Transaction Committed</h3>
               <p className="receipt-sub">
-                Product record successfully verified and written to CouchDB World State
+                Product origin record successfully verified and written to the distributed ledger
               </p>
             </div>
           </div>
@@ -131,11 +154,11 @@ export default function RegisterProduct() {
               <code className="receipt-code">{receipt.batchNumber}</code>
             </div>
             <div className="receipt-item">
-              <span className="receipt-label">Manufacturer:</span>
+              <span className="receipt-label">Origin Manufacturer:</span>
               <span className="receipt-val">{receipt.manufacturer}</span>
             </div>
             <div className="receipt-item">
-              <span className="receipt-label">Initial Owner:</span>
+              <span className="receipt-label">Initial Custodian:</span>
               <span className="receipt-val">{receipt.currentOwner || receipt.manufacturer}</span>
             </div>
             <div className="receipt-item">
@@ -165,9 +188,9 @@ export default function RegisterProduct() {
             </button>
             <button
               className="btn btn-secondary"
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/manufacturer/dashboard')}
             >
-              Return to Dashboard
+              Return to Console
             </button>
           </div>
         </div>
@@ -176,7 +199,7 @@ export default function RegisterProduct() {
       {/* Error Alert */}
       {error && (
         <div className="alert alert-error">
-          <div className="alert-icon">⚠️</div>
+          <AlertCircle size={16} />
           <div className="alert-content">
             <strong>Registration Rejection</strong>
             <p>{error}</p>
@@ -189,19 +212,9 @@ export default function RegisterProduct() {
 
       {/* Registration Form Card */}
       <div className="card modern-card form-card">
-        <div className="form-intro-banner">
-          <div className="info-icon">ℹ️</div>
-          <div>
-            <strong>Fabric Endorsement Policy Notice</strong>
-            <p>
-              Submitting this form executes the <code>SupplyChainContract:registerProduct</code> smart contract.
-              The proposal requires endorsements from both <code>Org1MSP</code> and <code>Org2MSP</code> peers before block commitment.
-            </p>
-          </div>
-        </div>
-
         <form onSubmit={handleSubmit} className="enterprise-form">
           <div className="form-grid">
+            {/* Product ID */}
             <div className="form-group">
               <label htmlFor="productId">
                 Product ID <span className="req">*</span>
@@ -216,10 +229,12 @@ export default function RegisterProduct() {
                 onChange={handleChange}
                 required
                 disabled={isSubmitting}
+                autoFocus
               />
-              <span className="field-hint">Unique alphanumeric identifier stored as ledger key.</span>
+              <span className="field-hint">Unique alphanumeric identifier stored as ledger world state key.</span>
             </div>
 
+            {/* Product Name */}
             <div className="form-group">
               <label htmlFor="productName">
                 Product Name <span className="req">*</span>
@@ -238,6 +253,7 @@ export default function RegisterProduct() {
               <span className="field-hint">Official commercial name of the manufactured asset.</span>
             </div>
 
+            {/* Batch Number */}
             <div className="form-group">
               <label htmlFor="batchNumber">
                 Batch Number <span className="req">*</span>
@@ -256,29 +272,68 @@ export default function RegisterProduct() {
               <span className="field-hint">Manufacturing production batch or lot reference.</span>
             </div>
 
+            {/* Origin Manufacturer (Derived Server-Side, Read-Only) */}
             <div className="form-group">
-              <label htmlFor="manufacturer">
-                Manufacturing Organization <span className="req">*</span>
+              <label>
+                Origin Manufacturer (Organization)
               </label>
-              <input
-                type="text"
-                id="manufacturer"
-                name="manufacturer"
-                className="form-input"
-                value={formData.manufacturer}
-                onChange={handleChange}
-                required
-                disabled={isSubmitting}
-              />
-              <span className="field-hint">Origin organization authorized under Org1MSP identity.</span>
+              <div
+                style={{
+                  padding: '9px 12px',
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <Building size={14} color="var(--primary)" />
+                <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>{manufacturerOrg}</strong>
+                <span style={{ fontSize: '0.72rem', background: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                  Verified Identity
+                </span>
+              </div>
+              <span className="field-hint">Origin organization identity derived server-side from authenticated session.</span>
             </div>
           </div>
 
-          <div className="form-footer-bar">
+          {/* Optional Collapsible Technical Details for Viva */}
+          <div style={{ marginTop: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '14px' }}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ padding: '4px 8px', fontSize: '0.8rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
+            >
+              <Cpu size={14} />
+              <span>{showTechnicalDetails ? 'Hide Technical / Consensus Parameters' : 'View Technical / Consensus Parameters (Viva)'}</span>
+              {showTechnicalDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+
+            {showTechnicalDetails && (
+              <div style={{ marginTop: '10px', padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.8rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                  <div>
+                    <span style={{ color: '#64748b', display: 'block' }}>Smart Contract Method:</span>
+                    <code style={{ color: '#0f172a', fontWeight: 600 }}>SupplyChainContract:registerProduct</code>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b', display: 'block' }}>Ledger Channel:</span>
+                    <code style={{ color: '#0f172a', fontWeight: 600 }}>mychannel</code>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b', display: 'block' }}>Endorsement Policy:</span>
+                    <code style={{ color: '#0f172a', fontWeight: 600 }}>Org1MSP &amp; Org2MSP</code>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="form-footer-bar" style={{ marginTop: '20px' }}>
             <div className="submit-info">
-              <span>Channel: <strong>mychannel</strong></span>
-              <span className="sep">&bull;</span>
-              <span>Initial Status: <strong>REGISTERED</strong></span>
+              <span>Initial Ledger Status: <strong>REGISTERED</strong></span>
             </div>
 
             <div className="form-buttons">
@@ -296,27 +351,33 @@ export default function RegisterProduct() {
                 className="btn btn-primary"
                 disabled={isSubmitting || !formData.productId.trim() || !formData.productName.trim()}
               >
-                {isSubmitting ? 'Submitting to Fabric...' : '📦 Commit to Blockchain'}
+                {isSubmitting ? (
+                  'Committing to Ledger...'
+                ) : (
+                  <>
+                    <PackagePlus size={15} style={{ marginRight: '6px' }} />
+                    <span>Commit to Ledger</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
         </form>
       </div>
 
-      {/* Multi-step Blockchain Processing Modal Overlay */}
+      {/* Multi-step Processing Modal Overlay */}
       {isSubmitting && (
         <div className="processing-overlay">
           <div className="processing-card modern-card">
-            <div className="blockchain-pulse-icon">⛓️</div>
             <div className="spinner"></div>
-            <h3>Submitting Hyperledger Fabric Transaction</h3>
+            <h3>Submitting Transaction to Ledger</h3>
             <p className="phase-text">{submitPhase}</p>
             <div className="ledger-steps">
               <div className="step-item active">Proposal</div>
               <div className="step-arrow">&rarr;</div>
               <div className="step-item active">Endorsement</div>
               <div className="step-arrow">&rarr;</div>
-              <div className="step-item active">Orderer</div>
+              <div className="step-item active">Ordering</div>
               <div className="step-arrow">&rarr;</div>
               <div className="step-item active">World State</div>
             </div>

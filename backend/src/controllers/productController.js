@@ -16,22 +16,49 @@ async function registerProduct(req, res, next) {
     try {
         const { productId, productName, batchNumber } = req.body;
 
-        // Server-side derivation: manufacturer identity is derived from authenticated user's organization
+        // 1. Mandatory field validation
+        if (!productId || !productName || !batchNumber) {
+            return res.status(400).json({
+                success: false,
+                error: 'Product ID, Product Name, and Batch Number are all required.',
+            });
+        }
+
+        const cleanId = productId.trim();
+        const cleanName = productName.trim();
+        const cleanBatch = batchNumber.trim();
+
+        // 2. Pre-check if product already exists on the ledger to prevent raw Fabric transaction rejection stack traces
+        try {
+            const existsResult = await fabricService.evaluateTransaction('productExists', cleanId);
+            const exists = typeof existsResult === 'string' ? existsResult.toLowerCase() === 'true' : Boolean(existsResult);
+            if (exists) {
+                return res.status(409).json({
+                    success: false,
+                    error: `Product ID "${cleanId}" is already registered on the ledger. Product IDs must be globally unique.`,
+                });
+            }
+        } catch (evalErr) {
+            // Non-fatal: if evaluation fails (e.g. gateway timeout), log warning and allow submitTransaction to attempt
+            console.warn(`[productExists] Pre-check evaluation warning for "${cleanId}":`, evalErr.message);
+        }
+
+        // 3. Server-side derivation: manufacturer identity is derived from authenticated user's organization
         const manufacturer = req.user?.organization || 'ManufacturerOrg';
 
         const result = await fabricService.submitTransaction(
             'registerProduct',
-            productId,
-            productName,
-            batchNumber,
+            cleanId,
+            cleanName,
+            cleanBatch,
             manufacturer
         );
 
         // Record confirmed blockchain transaction in real-time activity stream
         logTransactionActivity({
             type: 'REGISTER_PRODUCT',
-            productId,
-            productName,
+            productId: cleanId,
+            productName: cleanName,
             actor: manufacturer,
             currentOwner: manufacturer,
             status: 'COMMITTED',

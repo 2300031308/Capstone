@@ -71,8 +71,8 @@ export default function Header({ onRefresh, isRefreshing }) {
       <div className="header-left">
         <div className="header-title-wrap">
           <ShieldCheck className="brand-logo-icon" size={22} color="var(--primary)" />
-          <h1 className="header-app-title">SupplyChain Provenance</h1>
-          <span className="network-env-tag">Fabric 2.5 DLT</span>
+          <h1 className="header-app-title">TraceChain</h1>
+          <span className="network-env-tag">Enterprise Console</span>
         </div>
       </div>
 

@@ -35,16 +35,16 @@ export default function Landing() {
         <div className="landing-container">
           <div className="hero-badge-pill">
             <ShieldCheck size={14} color="var(--primary)" />
-            <span>Hyperledger Fabric 2.5 &bull; Enterprise DLT</span>
+            <span>Enterprise Supply-Chain Provenance Platform</span>
           </div>
 
           <h1 className="hero-main-heading">
-            Permissioned Supply-Chain Provenance
+            TraceChain Provenance Platform
           </h1>
 
           <p className="hero-sub-text">
-            Powered by Hyperledger Fabric. Secure product registration, verified ownership,
-            tamper-evident provenance, and strict role-based access control across the enterprise lifecycle.
+            Enterprise-grade product verification, cryptographically certified ownership,
+            tamper-evident provenance, and strict role-based custody governance across global supply chains.
           </p>
 
           <div className="hero-cta-group">
@@ -70,7 +70,7 @@ export default function Landing() {
         <div className="landing-container">
           <div className="section-header-center">
             <span className="section-eyebrow">Enterprise Features</span>
-            <h2 className="section-title">Core System Capabilities</h2>
+            <h2 className="section-title">Core Platform Capabilities</h2>
             <p className="section-desc">
               Engineered to enforce zero-trust transparency, immutable ownership tracking, and data integrity across distributed participants.
             </p>
@@ -83,7 +83,7 @@ export default function Landing() {
               </div>
               <h3 className="cap-title">Product Provenance</h3>
               <p className="cap-text">
-                Chronological chain-of-custody tracking recorded permanently in CouchDB World State with block timestamps and transaction IDs.
+                Chronological chain-of-custody tracking recorded permanently with cryptographic timestamps and transaction verification.
               </p>
             </div>
 
@@ -93,7 +93,7 @@ export default function Landing() {
               </div>
               <h3 className="cap-title">Blockchain-backed Records</h3>
               <p className="cap-text">
-                Immutable ledger state maintained by distributed peers, synchronized via Raft crash fault tolerant (CFT) consensus.
+                Immutable ledger state maintained by distributed enterprise peers, synchronized via fault-tolerant consensus.
               </p>
             </div>
 
@@ -103,7 +103,7 @@ export default function Landing() {
               </div>
               <h3 className="cap-title">Product Authenticity</h3>
               <p className="cap-text">
-                Cryptographic validation verifying origin signatures against registered manufacturer X.509 root certificates to reject counterfeits.
+                Cryptographic validation verifying origin signatures against registered manufacturer certificates to eliminate counterfeit risk.
               </p>
             </div>
 
@@ -113,7 +113,7 @@ export default function Landing() {
               </div>
               <h3 className="cap-title">Ownership Tracking</h3>
               <p className="cap-text">
-                State machine enforcing that only the current verified ledger custodian can authorize downstream custody transfers.
+                State machine enforcing that only the current verified custodian can authorize downstream custody transfers.
               </p>
             </div>
 
@@ -129,11 +129,11 @@ export default function Landing() {
 
             <div className="capability-card modern-card">
               <div className="cap-icon-box">
-                <Cpu size={22} color="var(--primary)" />
+                <FileCheck size={22} color="var(--primary)" />
               </div>
-              <h3 className="cap-title">Hyperledger Fabric Network</h3>
+              <h3 className="cap-title">Cryptographic Data Integrity</h3>
               <p className="cap-text">
-                Permissioned enterprise infrastructure operating on channel <code>mychannel</code> with smart contracts deployed across peer nodes.
+                Cryptographic signatures and hash digests protecting every product specification from unauthorized modification or tampering.
               </p>
             </div>
           </div>
@@ -159,9 +159,9 @@ export default function Landing() {
                 <Factory size={26} color="var(--primary)" />
               </div>
               <h4 className="step-role-heading">Manufacturer</h4>
-              <span className="step-msp-tag">Org1MSP Origin</span>
+              <span className="step-msp-tag">Certified Origin Enrollment</span>
               <p className="step-body-desc">
-                Registers new physical assets on the ledger with unique Product IDs, batch numbers, and origin metadata.
+                Enrolls physical assets into the provenance registry with unique identifiers, batch data, and certified origin records.
               </p>
             </div>
 
@@ -176,9 +176,9 @@ export default function Landing() {
                 <Truck size={26} color="var(--primary)" />
               </div>
               <h4 className="step-role-heading">Distributor</h4>
-              <span className="step-msp-tag">Org2MSP Logistics</span>
+              <span className="step-msp-tag">Verified Logistics Custody</span>
               <p className="step-body-desc">
-                Verifies shipment authenticity, takes active custody of freight, and routes consignments to retail centers.
+                Inspects inbound consignments, verifies authenticity, and manages custody transfer across transit corridors.
               </p>
             </div>
 
@@ -193,9 +193,9 @@ export default function Landing() {
                 <Store size={26} color="var(--primary)" />
               </div>
               <h4 className="step-role-heading">Retailer</h4>
-              <span className="step-msp-tag">Org2MSP Retail</span>
+              <span className="step-msp-tag">Store Inventory Verification</span>
               <p className="step-body-desc">
-                Conducts inbound store verification, manages shelf stock, and registers point-of-sale customer transitions.
+                Conducts inbound store verification, maintains retail shelf custody, and confirms store authenticity.
               </p>
             </div>
 
@@ -210,7 +210,7 @@ export default function Landing() {
                 <UserCheck size={26} color="var(--success)" />
               </div>
               <h4 className="step-role-heading">Customer</h4>
-              <span className="step-msp-tag">Verified Consumer</span>
+              <span className="step-msp-tag">Consumer Authenticity Audit</span>
               <p className="step-body-desc">
                 Scans product ID or QR code to verify cryptographic authenticity and inspect complete tamper-proof provenance.
               </p>
@@ -224,7 +224,7 @@ export default function Landing() {
         <div className="landing-container">
           <div className="section-header-center">
             <span className="section-eyebrow">Enterprise Stack</span>
-            <h2 className="section-title">Cryptographic &amp; DLT Foundations</h2>
+            <h2 className="section-title">Cryptographic &amp; Architecture Foundations</h2>
             <p className="section-desc">
               Built on production-proven enterprise distributed ledger standards and cryptographic specifications.
             </p>
@@ -233,45 +233,45 @@ export default function Landing() {
           <div className="tech-cards-grid">
             <div className="tech-spec-card modern-card">
               <div className="tech-header">
-                <Cpu size={20} color="var(--primary)" />
-                <h4>Hyperledger Fabric</h4>
-              </div>
-              <span className="tech-subtitle">Permissioned Blockchain</span>
-              <p className="tech-desc">
-                Enterprise consortium architecture with private channels, modular consensus, and isolated CouchDB world state databases.
-              </p>
-            </div>
-
-            <div className="tech-spec-card modern-card">
-              <div className="tech-header">
                 <FileCheck size={20} color="var(--primary)" />
-                <h4>SHA-256</h4>
+                <h4>Cryptographic Data Integrity</h4>
               </div>
-              <span className="tech-subtitle">Data Integrity</span>
+              <span className="tech-subtitle">Tamper-Evident Hashing</span>
               <p className="tech-desc">
-                Cryptographic hashing generating unique fingerprint digests of product specifications, preventing unauthorized data modification.
+                Digital cryptographic digests guaranteeing that product specifications, batch attributes, and timestamps cannot be altered without immediate detection.
               </p>
             </div>
 
             <div className="tech-spec-card modern-card">
               <div className="tech-header">
                 <KeyRound size={20} color="var(--primary)" />
-                <h4>ECDSA Signatures</h4>
+                <h4>Digital Origin Signatures</h4>
               </div>
-              <span className="tech-subtitle">Digital Signatures</span>
+              <span className="tech-subtitle">Non-Repudiation</span>
               <p className="tech-desc">
-                Elliptic Curve Digital Signature Algorithm ensuring non-repudiation and tamper-evident proof of origin across supply chain transitions.
+                Cryptographic digital signatures ensuring authenticity, origin non-repudiation, and verifiable provenance for each transition along the custody chain.
               </p>
             </div>
 
             <div className="tech-spec-card modern-card">
               <div className="tech-header">
                 <Lock size={20} color="var(--primary)" />
-                <h4>MSP / X.509</h4>
+                <h4>Verified Organization Identity</h4>
               </div>
-              <span className="tech-subtitle">Participant Identity</span>
+              <span className="tech-subtitle">Public Key Infrastructure</span>
               <p className="tech-desc">
-                Membership Service Provider framework validating cryptographic digital certificates issued by trusted Certificate Authorities.
+                Certificate authority and digital identity validation establishing cryptographic trust and governance across authorized enterprise organizations.
+              </p>
+            </div>
+
+            <div className="tech-spec-card modern-card">
+              <div className="tech-header">
+                <Cpu size={20} color="var(--primary)" />
+                <h4>Enterprise Distributed Ledger</h4>
+              </div>
+              <span className="tech-subtitle">Consensus &amp; Replication</span>
+              <p className="tech-desc">
+                Permissioned distributed ledger architecture providing synchronized world state replication, multi-party endorsement, and fault tolerance.
               </p>
             </div>
           </div>
@@ -353,15 +353,15 @@ export default function Landing() {
           <div className="footer-left">
             <div className="footer-brand">
               <ShieldCheck size={18} color="var(--primary)" />
-              <strong>SupplyChain Provenance</strong>
+              <strong>TraceChain</strong>
             </div>
             <p className="footer-tagline">
-              Permissioned Supply-Chain Provenance on Hyperledger Fabric
+              Enterprise Supply-Chain Provenance Platform
             </p>
           </div>
           <div className="footer-right">
             <span className="footer-copy">
-              Computer Science &amp; Engineering Capstone Project &bull; Objective 1 Architecture
+              Permissioned Enterprise Asset Tracking System
             </span>
           </div>
         </div>

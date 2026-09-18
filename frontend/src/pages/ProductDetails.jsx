@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { productApi } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatusBadge from '../components/StatusBadge';
+import { Copy, Check, RefreshCw, ShieldCheck, AlertCircle } from 'lucide-react';
 
 export default function ProductDetails() {
   const { productId } = useParams();
@@ -59,7 +60,7 @@ export default function ProductDetails() {
         </div>
 
         <div className="alert alert-error">
-          <div className="alert-icon">⚠️</div>
+          <AlertCircle size={16} />
           <div className="alert-content">
             <strong>World State Record Not Found</strong>
             <p>{error}</p>
@@ -88,8 +89,19 @@ export default function ProductDetails() {
               className="copy-btn"
               onClick={() => copyToClipboard(product.productId)}
               title="Copy Product ID"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
             >
-              {copied ? '✓ Copied' : '📋 Copy'}
+              {copied ? (
+                <>
+                  <Check size={12} color="var(--success)" />
+                  <span>Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy size={12} />
+                  <span>Copy</span>
+                </>
+              )}
             </button>
           </div>
           <div>
@@ -105,7 +117,8 @@ export default function ProductDetails() {
             &larr; Back to Catalog
           </button>
           <button className="btn btn-secondary btn-sm" onClick={fetchProduct} title="Re-query ledger">
-            🔄 Refresh State
+            <RefreshCw size={13} style={{ marginRight: '5px' }} />
+            <span>Refresh State</span>
           </button>
         </div>
       </div>
@@ -170,7 +183,10 @@ export default function ProductDetails() {
         <div className="card modern-card ledger-verification-card">
           <div className="card-header-bar">
             <h3 className="card-title">Blockchain Verification</h3>
-            <span className="verified-pill">🛡️ Valid State</span>
+            <span className="verified-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+              <ShieldCheck size={14} />
+              <span>Valid State</span>
+            </span>
           </div>
 
           <p className="ledger-desc">

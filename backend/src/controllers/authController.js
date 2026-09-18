@@ -12,27 +12,33 @@ const crypto = require('crypto');
 const db = require('../config/db');
 const { JWT_SECRET } = require('../middleware/auth');
 
-// Map application roles to verified Fabric MSP organizations and onboarding keys
-const ROLE_MSP_MAP = {
-    manufacturer: { mspId: 'Org1MSP', defaultOrg: 'ManufacturerOrg', authKey: 'MFG-AUTH-2026' },
-    distributor: { mspId: 'Org2MSP', defaultOrg: 'DistributorOrg', authKey: 'DIST-AUTH-2026' },
-    retailer: { mspId: 'Org2MSP', defaultOrg: 'RetailerOrg', authKey: 'RTL-AUTH-2026' },
-    customer: { mspId: 'Org1MSP', defaultOrg: 'Consumer', authKey: null },
+// Server-side Organization Access Codes mapping
+// Strictly defines role, organization, and Fabric MSP identity from valid codes.
+// Codes are never exposed to the client.
+const ORG_ACCESS_CODES = {
+    'APEX-MFG-ORG': { role: 'manufacturer', organization: 'ManufacturerOrg', mspId: 'Org1MSP' },
+    'SWIFT-DIST-ORG': { role: 'distributor', organization: 'DistributorOrg', mspId: 'Org2MSP' },
+    'METRO-RTL-ORG': { role: 'retailer', organization: 'RetailerOrg', mspId: 'Org2MSP' },
 };
 
 /**
  * Register a new user account.
  * POST /api/auth/register
+ *
+ * Controlled Onboarding:
+ * - Public self-registration assigns the "customer" role (Consumer organization, Org1MSP).
+ * - Enterprise registration requires a valid Organization Access Code verified strictly server-side.
+ * - Client-supplied role and organization parameters are ignored for security.
  */
 async function register(req, res, next) {
     try {
-        const { name, email, password, confirmPassword, organization, role, enterpriseKey } = req.body;
+        const { name, email, password, confirmPassword, accessCode, enterpriseKey } = req.body;
 
         // 1. Validation
-        if (!name || !email || !password || !role) {
+        if (!name || !email || !password) {
             return res.status(400).json({
                 success: false,
-                error: 'Required fields missing: name, email, password, and role are mandatory.',
+                error: 'Required fields missing: name, email, and password are mandatory.',
             });
         }
 
@@ -59,26 +65,26 @@ async function register(req, res, next) {
             });
         }
 
-        const normalizedRole = role.trim().toLowerCase();
-        const roleConfig = ROLE_MSP_MAP[normalizedRole];
-        if (!roleConfig) {
-            return res.status(400).json({
-                success: false,
-                error: `Invalid role "${role}". Allowed roles: manufacturer, distributor, retailer, customer.`,
-            });
-        }
+        // 2. Controlled Onboarding: Determine role, organization, and MSP strictly server-side
+        const rawCode = (accessCode || enterpriseKey || '').trim().toUpperCase();
+        let assignedRole = 'customer';
+        let assignedOrg = 'Consumer';
+        let assignedMspId = 'Org1MSP';
 
-        // Controlled Onboarding Security Check: Privileged roles require a valid enterprise key
-        if (roleConfig.authKey) {
-            if (!enterpriseKey || enterpriseKey.trim() !== roleConfig.authKey) {
+        if (rawCode) {
+            const orgMapping = ORG_ACCESS_CODES[rawCode];
+            if (!orgMapping) {
                 return res.status(403).json({
                     success: false,
-                    error: `Privileged enterprise onboarding for "${role}" requires a valid Enterprise Authorization Key. Contact the network administrator or register as a consumer.`,
+                    error: 'Invalid Organization Access Code. Please contact your organization administrator or register as a consumer without an access code.',
                 });
             }
+            assignedRole = orgMapping.role;
+            assignedOrg = orgMapping.organization;
+            assignedMspId = orgMapping.mspId;
         }
 
-        // 2. Check for duplicate email
+        // 3. Check for duplicate email
         const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
         if (existingUser) {
             return res.status(409).json({
@@ -87,15 +93,12 @@ async function register(req, res, next) {
             });
         }
 
-        // 3. Hash password securely
+        // 4. Hash password securely
         const passwordHash = await bcrypt.hash(password, 10);
-        const assignedOrg = normalizedRole === 'customer' 
-            ? 'Consumer' 
-            : (organization?.trim() || roleConfig.defaultOrg);
         const userId = `usr-${crypto.randomBytes(4).toString('hex')}`;
         const now = new Date().toISOString();
 
-        // 4. Save to SQLite database
+        // 5. Save to SQLite database
         const insertStmt = db.prepare(`
             INSERT INTO users (id, name, email, password_hash, organization, role, msp_id, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
@@ -107,8 +110,8 @@ async function register(req, res, next) {
             normalizedEmail,
             passwordHash,
             assignedOrg,
-            normalizedRole,
-            roleConfig.mspId,
+            assignedRole,
+            assignedMspId,
             now
         );
 
@@ -120,9 +123,9 @@ async function register(req, res, next) {
                     id: userId,
                     name: name.trim(),
                     email: normalizedEmail,
-                    role: normalizedRole,
+                    role: assignedRole,
                     organization: assignedOrg,
-                    mspId: mspConfig.mspId,
+                    mspId: assignedMspId,
                 },
             },
         });

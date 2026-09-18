@@ -4,7 +4,21 @@ import { productApi, networkApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatusBadge from '../components/StatusBadge';
-import { Factory, PackagePlus, Boxes, RefreshCw, CheckCircle2, ArrowRight } from 'lucide-react';
+import {
+  Factory,
+  PackagePlus,
+  Boxes,
+  RefreshCw,
+  CheckCircle2,
+  ArrowRight,
+  ShieldCheck,
+  Truck,
+  Layers,
+  Search,
+  History,
+  X,
+  AlertCircle,
+} from 'lucide-react';
 
 export default function ManufacturerDashboard() {
   const { user } = useAuth();
@@ -14,6 +28,14 @@ export default function ManufacturerDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+
+  // Quick Verification / Provenance Modal State
+  const [verifyModalOpen, setVerifyModalOpen] = useState(false);
+  const [verifySearchId, setVerifySearchId] = useState('');
+  const [verifyResult, setVerifyResult] = useState(null);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState(null);
+
   const navigate = useNavigate();
 
   const fetchDashboardData = useCallback(async (showLoading = false) => {
@@ -38,7 +60,7 @@ export default function ManufacturerDashboard() {
       }
     } catch (err) {
       console.error('Failed to load manufacturer dashboard:', err);
-      setError(err.message || 'Unable to connect to Hyperledger Fabric gateway');
+      setError(err.message || 'Unable to retrieve ledger state from blockchain gateway');
     } finally {
       setLoading(false);
     }
@@ -56,16 +78,67 @@ export default function ManufacturerDashboard() {
     return () => clearInterval(timer);
   }, [autoRefresh, fetchDashboardData]);
 
+  // Handle Quick Verification lookup against real Fabric ledger
+  const handleVerifySearch = async (e) => {
+    if (e) e.preventDefault();
+    const cleanId = verifySearchId.trim();
+    if (!cleanId) return;
+
+    setVerifyLoading(true);
+    setVerifyError(null);
+    setVerifyResult(null);
+
+    try {
+      const res = await productApi.getById(cleanId);
+      if (res && res.data) {
+        setVerifyResult(res.data);
+      } else {
+        setVerifyError(`Product "${cleanId}" was not found on the ledger.`);
+      }
+    } catch (err) {
+      setVerifyError(err.message || `No ledger record found for Product ID "${cleanId}"`);
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
+
+  const openVerifyModal = (prefillId = '') => {
+    setVerifySearchId(prefillId);
+    setVerifyResult(null);
+    setVerifyError(null);
+    setVerifyModalOpen(true);
+    if (prefillId) {
+      // automatically run search if prefilled
+      setTimeout(() => {
+        productApi.getById(prefillId)
+          .then(res => setVerifyResult(res.data))
+          .catch(err => setVerifyError(err.message));
+      }, 100);
+    }
+  };
+
   if (loading) {
-    return <LoadingSpinner message="Loading Manufacturer World State from Fabric..." />;
+    return <LoadingSpinner message="Synchronizing Manufacturer Ledger State..." />;
   }
 
+  // Calculate 4 Core Real Metrics
+  const userOrg = user?.organization || 'ManufacturerOrg';
   const myProducts = products.filter(
-    p => (p.manufacturer && p.manufacturer.toLowerCase() === (user?.organization || 'ManufacturerOrg').toLowerCase()) ||
+    p => (p.manufacturer && p.manufacturer.toLowerCase() === userOrg.toLowerCase()) ||
          p.manufacturer === 'ManufacturerOrg'
   );
-  const registeredCount = products.filter(p => p.status === 'REGISTERED').length;
-  const uniqueBatches = new Set(products.map(p => p.batchNumber)).size;
+
+  const inCustodyCount = myProducts.filter(
+    p => p.currentOwner && p.currentOwner.toLowerCase() === userOrg.toLowerCase()
+  ).length;
+
+  const transferredCount = myProducts.filter(
+    p => p.currentOwner && p.currentOwner.toLowerCase() !== userOrg.toLowerCase()
+  ).length;
+
+  const uniqueBatches = new Set(myProducts.map(p => p.batchNumber).filter(Boolean)).size;
+
+  const isLedgerOnline = networkInfo?.connected !== false;
 
   const getRelativeTime = (timestamp) => {
     if (!timestamp) return 'Recently';
@@ -79,6 +152,7 @@ export default function ManufacturerDashboard() {
 
   return (
     <div className="dashboard-view">
+      {/* Header Bar */}
       <div className="dashboard-header-bar">
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
@@ -86,18 +160,46 @@ export default function ManufacturerDashboard() {
             <h2 className="dashboard-title">Manufacturer Console</h2>
           </div>
           <p className="dashboard-subtitle">
-            Authenticated Entity: <strong>{user?.name}</strong> &bull; Organization: <code>{user?.organization}</code> &bull; Identity: <code>{user?.mspId}</code>
+            Authenticated Entity: <strong>{user?.name}</strong> &bull; Organization: <code>{user?.organization}</code>
           </p>
         </div>
 
         <div className="dashboard-actions">
-          <label className="toggle-label" title="Automatically poll Fabric ledger for state updates">
+          {/* Simple User Ledger Status */}
+          <div
+            className={`status-pill ${isLedgerOnline ? 'status-pill-online' : 'status-pill-offline'}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '20px',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              background: isLedgerOnline ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+              color: isLedgerOnline ? '#059669' : '#dc2626',
+              border: `1px solid ${isLedgerOnline ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`,
+            }}
+          >
+            <span
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: isLedgerOnline ? '#10b981' : '#ef4444',
+                display: 'inline-block',
+              }}
+            />
+            <span>Ledger Status: {isLedgerOnline ? 'Online' : 'Offline'}</span>
+          </div>
+
+          <label className="toggle-label" title="Automatically poll ledger for state updates">
             <input
               type="checkbox"
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
             />
-            <span className="toggle-text">Live Sync {autoRefresh ? '(12s)' : '(Off)'}</span>
+            <span className="toggle-text">Live Sync</span>
           </label>
 
           <button
@@ -106,15 +208,7 @@ export default function ManufacturerDashboard() {
             title="Synchronize world state immediately"
           >
             <RefreshCw size={13} />
-            <span>Sync Ledger</span>
-          </button>
-
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => navigate('/register-product')}
-          >
-            <PackagePlus size={15} />
-            <span>Register New Product</span>
+            <span>Sync</span>
           </button>
         </div>
       </div>
@@ -122,7 +216,7 @@ export default function ManufacturerDashboard() {
       {error && (
         <div className="alert alert-error">
           <div className="alert-content">
-            <strong>Blockchain Connection Notice</strong>
+            <strong>Ledger Notice</strong>
             <p>{error}</p>
           </div>
           <button className="btn btn-secondary btn-sm" onClick={() => fetchDashboardData(true)}>
@@ -131,65 +225,110 @@ export default function ManufacturerDashboard() {
         </div>
       )}
 
-      {/* Real Metric Cards */}
+      {/* Primary Actions Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          style={{ justifyContent: 'center', padding: '12px', height: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}
+          onClick={() => navigate('/register-product')}
+        >
+          <PackagePlus size={20} />
+          <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>Register Product</span>
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-secondary"
+          style={{ justifyContent: 'center', padding: '12px', height: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}
+          onClick={() => navigate('/products')}
+        >
+          <Boxes size={20} color="var(--primary)" />
+          <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>View Manufactured Products</span>
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-secondary"
+          style={{ justifyContent: 'center', padding: '12px', height: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}
+          onClick={() => openVerifyModal()}
+        >
+          <ShieldCheck size={20} color="var(--success)" />
+          <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>Verify Product</span>
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-secondary"
+          style={{ justifyContent: 'center', padding: '12px', height: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}
+          onClick={() => {
+            if (myProducts.length > 0) {
+              openVerifyModal(myProducts[0].productId);
+            } else {
+              openVerifyModal();
+            }
+          }}
+        >
+          <History size={20} color="var(--primary)" />
+          <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>View Provenance</span>
+        </button>
+      </div>
+
+      {/* 4 Real Metric Cards */}
       <div className="stats-grid">
         <div className="stat-card modern-card">
           <div className="stat-card-header">
-            <span className="stat-label">Total Manufactured Assets</span>
-            <span className="stat-badge blue">Org1MSP Origin</span>
+            <span className="stat-label">Total Registered</span>
+            <span className="stat-badge blue">Registered Origin</span>
           </div>
           <div className="stat-value-wrap">
             <div className="stat-number">{myProducts.length}</div>
-            <Boxes size={28} className="stat-icon-svg" />
+            <Boxes size={26} className="stat-icon-svg" />
           </div>
           <div className="stat-footer">
-            <span className="stat-subtext">Committed with origin certificates</span>
+            <span className="stat-subtext">Total products enrolled on ledger</span>
           </div>
         </div>
 
         <div className="stat-card modern-card">
           <div className="stat-card-header">
-            <span className="stat-label">Active Registered State</span>
-            <span className="stat-badge green">Ledger Verified</span>
+            <span className="stat-label">In Custody</span>
+            <span className="stat-badge green">Manufacturer Facility</span>
           </div>
           <div className="stat-value-wrap">
-            <div className="stat-number">{registeredCount}</div>
-            <CheckCircle2 size={28} className="stat-icon-svg success" />
+            <div className="stat-number">{inCustodyCount}</div>
+            <CheckCircle2 size={26} className="stat-icon-svg success" />
           </div>
           <div className="stat-footer">
-            <span className="stat-subtext">World State: CouchDB</span>
+            <span className="stat-subtext">Physical assets currently in facility</span>
           </div>
         </div>
 
         <div className="stat-card modern-card">
           <div className="stat-card-header">
-            <span className="stat-label">Production Batches</span>
-            <span className="stat-badge amber">Batch Tracking</span>
+            <span className="stat-label">Transferred</span>
+            <span className="stat-badge amber">In Transit / Distributed</span>
+          </div>
+          <div className="stat-value-wrap">
+            <div className="stat-number">{transferredCount}</div>
+            <Truck size={26} className="stat-icon-svg" />
+          </div>
+          <div className="stat-footer">
+            <span className="stat-subtext">Custody handed off downstream</span>
+          </div>
+        </div>
+
+        <div className="stat-card modern-card">
+          <div className="stat-card-header">
+            <span className="stat-label">Active Batches</span>
+            <span className="stat-badge purple">Production Lots</span>
           </div>
           <div className="stat-value-wrap">
             <div className="stat-number">{uniqueBatches}</div>
-            <Factory size={28} className="stat-icon-svg" />
+            <Layers size={26} className="stat-icon-svg" />
           </div>
           <div className="stat-footer">
-            <span className="stat-subtext">Cryptographically indexed lots</span>
-          </div>
-        </div>
-
-        <div className="stat-card modern-card">
-          <div className="stat-card-header">
-            <span className="stat-label">Fabric Peer Latency</span>
-            <span className={`stat-badge ${networkInfo?.connected ? 'green' : 'red'}`}>
-              {networkInfo?.connected ? 'ONLINE' : 'OFFLINE'}
-            </span>
-          </div>
-          <div className="stat-value-wrap">
-            <div className="stat-number" style={{ fontSize: '1.4rem' }}>
-              {networkInfo?.connected ? `${networkInfo.latencyMs}ms` : 'Down'}
-            </div>
-            <span className="channel-badge" style={{ fontSize: '0.8rem' }}>mychannel</span>
-          </div>
-          <div className="stat-footer">
-            <span className="stat-subtext">Endorsement: Org1MSP &amp; Org2MSP</span>
+            <span className="stat-subtext">Distinct manufacturing batches</span>
           </div>
         </div>
       </div>
@@ -201,7 +340,7 @@ export default function ManufacturerDashboard() {
             <div className="card-header-bar">
               <div>
                 <h3 className="card-title">Manufactured Products on Ledger</h3>
-                <p className="card-subtitle">Showing origin records committed by {user?.organization}</p>
+                <p className="card-subtitle">Showing origin records committed by {userOrg}</p>
               </div>
               <button
                 className="btn btn-secondary btn-sm"
@@ -214,8 +353,8 @@ export default function ManufacturerDashboard() {
             {myProducts.length === 0 ? (
               <div className="empty-state">
                 <h4>No Manufactured Products Yet</h4>
-                <p>Submit your first genuine product origin record to the Hyperledger Fabric ledger.</p>
-                <button className="btn btn-primary btn-sm" onClick={() => navigate('/register')}>
+                <p>Register your first genuine product origin record to the distributed ledger.</p>
+                <button className="btn btn-primary btn-sm" onClick={() => navigate('/register-product')}>
                   <PackagePlus size={14} /> Register First Product
                 </button>
               </div>
@@ -227,10 +366,10 @@ export default function ManufacturerDashboard() {
                       <th>Product ID</th>
                       <th>Product Name</th>
                       <th>Batch Number</th>
-                      <th>Current Owner</th>
+                      <th>Current Custodian</th>
                       <th>Status</th>
-                      <th>Registered On</th>
-                      <th>Action</th>
+                      <th>Timestamp</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -246,19 +385,33 @@ export default function ManufacturerDashboard() {
                           </td>
                           <td><strong>{product.productName}</strong></td>
                           <td><code className="batch-code">{product.batchNumber}</code></td>
-                          <td><span className="owner-badge">{product.currentOwner}</span></td>
+                          <td>
+                            <span className={`owner-badge ${product.currentOwner === userOrg ? 'owner-badge-mine' : ''}`}>
+                              {product.currentOwner}
+                            </span>
+                          </td>
                           <td><StatusBadge status={product.status} isGenesis={isGenesis} /></td>
                           <td className="table-date-cell">
                             {product.createdAt ? new Date(product.createdAt).toLocaleDateString() : '—'}
                           </td>
                           <td>
-                            <button
-                              className="btn btn-action-view"
-                              onClick={() => navigate(`/products/${product.productId}`)}
-                              title="Inspect on Fabric ledger"
-                            >
-                              Inspect &rarr;
-                            </button>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button
+                                className="btn btn-action-view"
+                                onClick={() => navigate(`/products/${product.productId}`)}
+                                title="View full details on ledger"
+                              >
+                                View Details
+                              </button>
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                style={{ padding: '3px 8px', fontSize: '0.74rem' }}
+                                onClick={() => openVerifyModal(product.productId)}
+                                title="Inspect provenance"
+                              >
+                                Provenance
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -316,6 +469,130 @@ export default function ManufacturerDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Interactive Product Verification & Provenance Modal */}
+      {verifyModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setVerifyModalOpen(false);
+          }}
+        >
+          <div
+            className="card modern-card"
+            style={{
+              maxWidth: '560px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: '24px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ShieldCheck size={22} color="var(--primary)" />
+                <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a' }}>Ledger Product Verification</h3>
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => setVerifyModalOpen(false)}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 16px' }}>
+              Query the real world state on the distributed ledger to verify origin authenticity, custody, and batch status.
+            </p>
+
+            <form onSubmit={handleVerifySearch} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Enter Product ID (e.g. P101, P000)"
+                value={verifySearchId}
+                onChange={(e) => setVerifySearchId(e.target.value)}
+                autoFocus
+              />
+              <button
+                type="submit"
+                className="btn btn-primary btn-sm"
+                disabled={verifyLoading || !verifySearchId.trim()}
+                style={{ padding: '0 16px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Search size={14} />
+                <span>Verify</span>
+              </button>
+            </form>
+
+            {verifyLoading && (
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <LoadingSpinner message="Querying distributed ledger..." />
+              </div>
+            )}
+
+            {verifyError && (
+              <div className="alert alert-error" style={{ marginBottom: '16px' }}>
+                <AlertCircle size={16} />
+                <div className="alert-content" style={{ fontSize: '0.86rem' }}>{verifyError}</div>
+              </div>
+            )}
+
+            {verifyResult && (
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
+                    {verifyResult.productName}
+                  </span>
+                  <StatusBadge status={verifyResult.status} isGenesis={verifyResult.productId === 'P000'} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.82rem' }}>
+                  <div>
+                    <span style={{ color: '#64748b', display: 'block' }}>Product ID</span>
+                    <strong style={{ fontFamily: 'monospace', color: '#0f172a' }}>{verifyResult.productId}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b', display: 'block' }}>Batch Number</span>
+                    <strong style={{ fontFamily: 'monospace', color: '#0f172a' }}>{verifyResult.batchNumber}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b', display: 'block' }}>Manufacturer</span>
+                    <strong style={{ color: '#0f172a' }}>{verifyResult.manufacturer}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748b', display: 'block' }}>Current Custodian</span>
+                    <strong style={{ color: '#2563eb' }}>{verifyResult.currentOwner}</strong>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => {
+                      setVerifyModalOpen(false);
+                      navigate(`/products/${verifyResult.productId}`);
+                    }}
+                  >
+                    View Full Provenance &rarr;
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
