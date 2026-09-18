@@ -8,14 +8,13 @@ import {
   ShieldCheck,
   History,
   Building2,
-  Lock,
 } from 'lucide-react';
 
 export default function Sidebar() {
   const { user } = useAuth();
   const role = (user?.role || '').toLowerCase();
 
-  // Define tailored navigation sections per role
+  // Strict role-specific navigation mapping
   const getNavSections = () => {
     switch (role) {
       case 'manufacturer':
@@ -24,15 +23,14 @@ export default function Sidebar() {
             title: 'Manufacturer Operations',
             items: [
               { path: '/manufacturer/dashboard', icon: LayoutDashboard, label: 'Overview' },
-              { path: '/register', icon: PackagePlus, label: 'Register Product' },
+              { path: '/register-product', icon: PackagePlus, label: 'Register Product' },
               { path: '/products', icon: Boxes, label: 'Manufactured Assets' },
             ],
           },
           {
-            title: 'Provenance & Audit',
+            title: 'Verification & Audit',
             items: [
-              { path: '/transfer', icon: Truck, label: 'Custody Transfer', tag: 'O4' },
-              { path: '/verify', icon: ShieldCheck, label: 'Verify Authenticity', tag: 'O3' },
+              { path: '/verify', icon: ShieldCheck, label: 'Verify Product', tag: 'O3' },
               { path: '/history', icon: History, label: 'Provenance History', tag: 'O5' },
             ],
           },
@@ -49,7 +47,7 @@ export default function Sidebar() {
             ],
           },
           {
-            title: 'Verification',
+            title: 'Audit & Verification',
             items: [
               { path: '/verify', icon: ShieldCheck, label: 'Verify Shipment', tag: 'O3' },
               { path: '/history', icon: History, label: 'Audit Trail', tag: 'O5' },
@@ -70,7 +68,7 @@ export default function Sidebar() {
           {
             title: 'Authentication',
             items: [
-              { path: '/verify', icon: ShieldCheck, label: 'Verify Stock', tag: 'O3' },
+              { path: '/verify', icon: ShieldCheck, label: 'Inbound Verification', tag: 'O3' },
               { path: '/history', icon: History, label: 'Product Provenance', tag: 'O5' },
             ],
           },
@@ -80,7 +78,7 @@ export default function Sidebar() {
       default:
         return [
           {
-            title: 'Consumer Verification',
+            title: 'Consumer Portal',
             items: [
               { path: '/customer/dashboard', icon: ShieldCheck, label: 'Authenticity Check' },
               { path: '/verify', icon: ShieldCheck, label: 'Verify Product', tag: 'O3' },
@@ -101,7 +99,7 @@ export default function Sidebar() {
         </div>
         <div className="brand-text">
           <h2>Hyperledger Fabric</h2>
-          <p>Enterprise Network</p>
+          <p>{role === 'customer' ? 'Consumer Portal' : 'Consortium Network'}</p>
         </div>
       </div>
 
@@ -131,22 +129,24 @@ export default function Sidebar() {
         ))}
       </div>
 
-      <div className="sidebar-footer">
-        <div className="network-meta-box">
-          <div className="meta-row">
-            <span className="meta-label">Consensus:</span>
-            <span className="meta-val">Raft</span>
-          </div>
-          <div className="meta-row">
-            <span className="meta-label">State DB:</span>
-            <span className="meta-val">CouchDB</span>
-          </div>
-          <div className="meta-row">
-            <span className="meta-label">MSP Identity:</span>
-            <span className="meta-val">{user?.mspId || 'Org1MSP'}</span>
+      {role !== 'customer' && (
+        <div className="sidebar-footer">
+          <div className="network-meta-box">
+            <div className="meta-row">
+              <span className="meta-label">Consensus:</span>
+              <span className="meta-val">Raft CFT</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">State DB:</span>
+              <span className="meta-val">CouchDB</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-label">MSP Identity:</span>
+              <span className="meta-val">{user?.mspId || 'Org1MSP'}</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </aside>
   );
 }

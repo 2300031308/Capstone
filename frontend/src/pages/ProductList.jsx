@@ -127,7 +127,7 @@ export default function ProductList() {
           {role === 'manufacturer' && (
             <button
               className="btn btn-primary btn-sm"
-              onClick={() => navigate('/register')}
+              onClick={() => navigate('/register-product')}
             >
               <PackagePlus size={14} />
               <span>Register Product</span>

@@ -80,7 +80,7 @@ export default function CustomerDashboard() {
             <h2 className="dashboard-title">Consumer Provenance &amp; Authenticity Portal</h2>
           </div>
           <p className="dashboard-subtitle">
-            Authenticated Consumer: <strong>{user?.name}</strong> &bull; Verification Identity: <code>{user?.mspId || 'ClientMSP'}</code>
+            Authenticated Consumer: <strong>{user?.name}</strong> &bull; Verification Identity: <code>{user?.mspId || 'Org1MSP'}</code>
           </p>
         </div>
 

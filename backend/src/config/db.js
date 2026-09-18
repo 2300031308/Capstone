@@ -46,10 +46,7 @@ db.exec(`
  * Allows instant testing for university review and demo evaluations.
  */
 function seedDefaultUsers() {
-    const count = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-    if (count > 0) return;
-
-    console.log('Seeding initial enterprise user accounts into SQLite...');
+    console.log('Ensuring verified enterprise user accounts in SQLite...');
     const defaultPassword = 'Password@123';
     const passwordHash = bcrypt.hashSync(defaultPassword, 10);
     const now = new Date().toISOString();
@@ -82,26 +79,31 @@ function seedDefaultUsers() {
             email: 'retailer@supplychain.com',
             organization: 'RetailerOrg',
             role: 'retailer',
-            mspId: 'RetailerMSP',
+            mspId: 'Org2MSP',
         },
         {
             id: 'usr-cst-01',
             name: 'Verified Consumer',
             email: 'customer@supplychain.com',
-            organization: 'ConsumerOrg',
+            organization: 'Consumer',
             role: 'customer',
-            mspId: 'ClientMSP',
+            mspId: 'Org1MSP',
         },
     ];
 
-    const insertMany = db.transaction((users) => {
+    const insertOrReplace = db.prepare(`
+        INSERT OR REPLACE INTO users (id, name, email, password_hash, organization, role, msp_id, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
+    `);
+
+    const updateMany = db.transaction((users) => {
         for (const u of users) {
-            insert.run(u.id, u.name, u.email, passwordHash, u.organization, u.role, u.mspId, now);
+            insertOrReplace.run(u.id, u.name, u.email, passwordHash, u.organization, u.role, u.mspId, now);
         }
     });
 
-    insertMany(defaultAccounts);
-    console.log(`Seeded ${defaultAccounts.length} accounts. Default password: ${defaultPassword}`);
+    updateMany(defaultAccounts);
+    console.log(`Configured ${defaultAccounts.length} enterprise accounts with verified Fabric MSPs.`);
 }
 
 seedDefaultUsers();

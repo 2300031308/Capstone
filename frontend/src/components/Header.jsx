@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { networkApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { ShieldCheck, RefreshCw, LogOut, CheckCircle, XCircle } from 'lucide-react';
 
 export default function Header({ onRefresh, isRefreshing }) {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [networkStatus, setNetworkStatus] = useState({
     connected: false,
     status: 'CHECKING',
@@ -45,13 +47,13 @@ export default function Header({ onRefresh, isRefreshing }) {
   const roleConfigs = {
     manufacturer: { label: 'Manufacturer', msp: 'Org1MSP' },
     distributor: { label: 'Distributor', msp: 'Org2MSP' },
-    retailer: { label: 'Retailer', msp: 'RetailerMSP' },
-    customer: { label: 'Consumer', msp: 'ClientMSP' },
+    retailer: { label: 'Retailer', msp: 'Org2MSP' },
+    customer: { label: 'Consumer', msp: 'Org1MSP' },
   };
 
   const currentRoleConfig = roleConfigs[user?.role?.toLowerCase()] || {
     label: user?.role || 'Participant',
-    msp: user?.mspId || 'OrgMSP',
+    msp: user?.mspId || 'Org1MSP',
   };
 
   const formatTime = (isoString) => {
@@ -123,7 +125,10 @@ export default function Header({ onRefresh, isRefreshing }) {
 
           <button
             className="btn-logout"
-            onClick={logout}
+            onClick={() => {
+              logout();
+              navigate('/');
+            }}
             title="Sign out of current account"
           >
             <LogOut size={14} />

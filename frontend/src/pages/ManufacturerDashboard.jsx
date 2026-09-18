@@ -111,7 +111,7 @@ export default function ManufacturerDashboard() {
 
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => navigate('/register')}
+            onClick={() => navigate('/register-product')}
           >
             <PackagePlus size={15} />
             <span>Register New Product</span>

@@ -12,12 +12,12 @@ const crypto = require('crypto');
 const db = require('../config/db');
 const { JWT_SECRET } = require('../middleware/auth');
 
-// Map application roles to Fabric MSP organizations
+// Map application roles to verified Fabric MSP organizations and onboarding keys
 const ROLE_MSP_MAP = {
-    manufacturer: { mspId: 'Org1MSP', defaultOrg: 'ManufacturerOrg' },
-    distributor: { mspId: 'Org2MSP', defaultOrg: 'DistributorOrg' },
-    retailer: { mspId: 'RetailerMSP', defaultOrg: 'RetailerOrg' },
-    customer: { mspId: 'ClientMSP', defaultOrg: 'ConsumerOrg' },
+    manufacturer: { mspId: 'Org1MSP', defaultOrg: 'ManufacturerOrg', authKey: 'MFG-AUTH-2026' },
+    distributor: { mspId: 'Org2MSP', defaultOrg: 'DistributorOrg', authKey: 'DIST-AUTH-2026' },
+    retailer: { mspId: 'Org2MSP', defaultOrg: 'RetailerOrg', authKey: 'RTL-AUTH-2026' },
+    customer: { mspId: 'Org1MSP', defaultOrg: 'Consumer', authKey: null },
 };
 
 /**
@@ -26,7 +26,7 @@ const ROLE_MSP_MAP = {
  */
 async function register(req, res, next) {
     try {
-        const { name, email, password, confirmPassword, organization, role } = req.body;
+        const { name, email, password, confirmPassword, organization, role, enterpriseKey } = req.body;
 
         // 1. Validation
         if (!name || !email || !password || !role) {
@@ -60,11 +60,22 @@ async function register(req, res, next) {
         }
 
         const normalizedRole = role.trim().toLowerCase();
-        if (!ROLE_MSP_MAP[normalizedRole]) {
+        const roleConfig = ROLE_MSP_MAP[normalizedRole];
+        if (!roleConfig) {
             return res.status(400).json({
                 success: false,
                 error: `Invalid role "${role}". Allowed roles: manufacturer, distributor, retailer, customer.`,
             });
+        }
+
+        // Controlled Onboarding Security Check: Privileged roles require a valid enterprise key
+        if (roleConfig.authKey) {
+            if (!enterpriseKey || enterpriseKey.trim() !== roleConfig.authKey) {
+                return res.status(403).json({
+                    success: false,
+                    error: `Privileged enterprise onboarding for "${role}" requires a valid Enterprise Authorization Key. Contact the network administrator or register as a consumer.`,
+                });
+            }
         }
 
         // 2. Check for duplicate email
@@ -78,8 +89,9 @@ async function register(req, res, next) {
 
         // 3. Hash password securely
         const passwordHash = await bcrypt.hash(password, 10);
-        const mspConfig = ROLE_MSP_MAP[normalizedRole];
-        const assignedOrg = organization?.trim() || mspConfig.defaultOrg;
+        const assignedOrg = normalizedRole === 'customer' 
+            ? 'Consumer' 
+            : (organization?.trim() || roleConfig.defaultOrg);
         const userId = `usr-${crypto.randomBytes(4).toString('hex')}`;
         const now = new Date().toISOString();
 
@@ -96,7 +108,7 @@ async function register(req, res, next) {
             passwordHash,
             assignedOrg,
             normalizedRole,
-            mspConfig.mspId,
+            roleConfig.mspId,
             now
         );
 

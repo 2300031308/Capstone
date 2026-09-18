@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import RegisterAccount from './pages/RegisterAccount';
 import ManufacturerDashboard from './pages/ManufacturerDashboard';
@@ -36,7 +37,10 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Public Authentication Routes */}
+      {/* 1. Root Public Landing Page */}
+      <Route path="/" element={<Landing />} />
+
+      {/* 2. Public Authentication Routes */}
       <Route
         path="/login"
         element={
@@ -48,7 +52,7 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/register-account"
+        path="/register"
         element={
           isAuthenticated && user ? (
             <Navigate to={getRoleDashboard(user.role)} replace />
@@ -57,8 +61,12 @@ function AppRoutes() {
           )
         }
       />
+      <Route
+        path="/register-account"
+        element={<Navigate to="/register" replace />}
+      />
 
-      {/* Authenticated Application Layout & Protected Routes */}
+      {/* 3. Authenticated Application Shell & Protected Routes */}
       <Route
         path="/*"
         element={
@@ -72,7 +80,7 @@ function AppRoutes() {
                 />
                 <main className="main-content" key={refreshKey}>
                   <Routes>
-                    {/* Role-Specific Consoles */}
+                    {/* Dedicated Role Consoles */}
                     <Route
                       path="manufacturer/dashboard"
                       element={
@@ -108,14 +116,6 @@ function AppRoutes() {
 
                     {/* Manufacturer Operations */}
                     <Route
-                      path="register"
-                      element={
-                        <ProtectedRoute allowedRoles={['manufacturer']}>
-                          <RegisterProduct />
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
                       path="register-product"
                       element={
                         <ProtectedRoute allowedRoles={['manufacturer']}>
@@ -124,7 +124,7 @@ function AppRoutes() {
                       }
                     />
 
-                    {/* Shared Ledger Exploration */}
+                    {/* Ledger Catalog & Verification */}
                     <Route
                       path="products"
                       element={
@@ -142,11 +142,11 @@ function AppRoutes() {
                       }
                     />
 
-                    {/* Future Milestones */}
+                    {/* Custody Transfer & Milestone Stubs */}
                     <Route
                       path="transfer"
                       element={
-                        <ProtectedRoute allowedRoles={['manufacturer', 'distributor', 'retailer']}>
+                        <ProtectedRoute allowedRoles={['distributor', 'retailer']}>
                           <PlaceholderPage
                             title="Custody Transfer & Ownership Routing"
                             desc="Custody transfer on Hyperledger Fabric will be enabled in Objective 4."
@@ -180,7 +180,7 @@ function AppRoutes() {
                       }
                     />
 
-                    {/* Default Dashboard Redirection */}
+                    {/* Role Dashboard Fallback */}
                     <Route
                       path="dashboard"
                       element={<RoleRedirectHelper />}
