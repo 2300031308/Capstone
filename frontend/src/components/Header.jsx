@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { networkApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { ShieldCheck, RefreshCw, LogOut, CheckCircle, XCircle } from 'lucide-react';
 
-export default function Header({ role, onLogout, onRefresh, isRefreshing }) {
+export default function Header({ onRefresh, isRefreshing }) {
+  const { user, logout } = useAuth();
   const [networkStatus, setNetworkStatus] = useState({
     connected: false,
     status: 'CHECKING',
@@ -28,7 +31,6 @@ export default function Header({ role, onLogout, onRefresh, isRefreshing }) {
 
   useEffect(() => {
     checkStatus();
-    // Poll network status every 15 seconds
     const interval = setInterval(checkStatus, 15000);
     return () => clearInterval(interval);
   }, []);
@@ -40,17 +42,16 @@ export default function Header({ role, onLogout, onRefresh, isRefreshing }) {
     }
   };
 
-  const roleLabels = {
-    manufacturer: { name: 'Manufacturer', icon: '🏭', desc: 'Org1MSP — Product Origin' },
-    distributor: { name: 'Distributor', icon: '🚚', desc: 'Org2MSP — Logistics & Transit' },
-    retailer: { name: 'Retailer', icon: '🏪', desc: 'Retail Verification' },
-    customer: { name: 'Consumer', icon: '👤', desc: 'End-User Verification' },
+  const roleConfigs = {
+    manufacturer: { label: 'Manufacturer', msp: 'Org1MSP' },
+    distributor: { label: 'Distributor', msp: 'Org2MSP' },
+    retailer: { label: 'Retailer', msp: 'RetailerMSP' },
+    customer: { label: 'Consumer', msp: 'ClientMSP' },
   };
 
-  const currentRole = roleLabels[role?.toLowerCase()] || {
-    name: role || 'Manufacturer',
-    icon: '🏢',
-    desc: 'Authorized Participant',
+  const currentRoleConfig = roleConfigs[user?.role?.toLowerCase()] || {
+    label: user?.role || 'Participant',
+    msp: user?.mspId || 'OrgMSP',
   };
 
   const formatTime = (isoString) => {
@@ -67,54 +68,66 @@ export default function Header({ role, onLogout, onRefresh, isRefreshing }) {
     <header className="top-header">
       <div className="header-left">
         <div className="header-title-wrap">
-          <h1 className="header-app-title">
-            <span className="chain-logo">⛓️</span>
-            SupplyChain Provenance
-          </h1>
-          <span className="network-env-tag">Hyperledger Fabric 2.5</span>
+          <ShieldCheck className="brand-logo-icon" size={22} color="var(--primary)" />
+          <h1 className="header-app-title">SupplyChain Provenance</h1>
+          <span className="network-env-tag">Fabric 2.5 DLT</span>
         </div>
       </div>
 
       <div className="header-right">
         {/* Live Fabric Connection Indicator */}
-        <div className={`network-pill ${networkStatus.connected ? 'online' : 'offline'}`} title={`Peer: ${networkStatus.peerEndpoint} | Channel: ${networkStatus.channel}`}>
-          <span className="pulse-dot"></span>
+        <div
+          className={`network-pill ${networkStatus.connected ? 'online' : 'offline'}`}
+          title={`Peer: ${networkStatus.peerEndpoint} | Channel: ${networkStatus.channel}`}
+        >
+          {networkStatus.connected ? (
+            <CheckCircle size={14} className="status-svg-icon" />
+          ) : (
+            <XCircle size={14} className="status-svg-icon" />
+          )}
           <span className="network-pill-text">
             {networkStatus.connected
-              ? `Fabric Connected ${networkStatus.latencyMs ? `(${networkStatus.latencyMs}ms)` : ''}`
+              ? `Fabric Online ${networkStatus.latencyMs ? `(${networkStatus.latencyMs}ms)` : ''}`
               : 'Fabric Offline'}
           </span>
           <span className="channel-badge">{networkStatus.channel}</span>
         </div>
 
-        {/* Sync Status and Trigger */}
+        {/* Sync Status and Manual Trigger */}
         <div className="sync-control">
-          <span className="sync-time" title="Last World State synchronization">
+          <span className="sync-time">
             Sync: {formatTime(networkStatus.lastSynchronized)}
           </span>
           <button
             className={`btn-icon-sync ${isRefreshing ? 'spinning' : ''}`}
             onClick={handleManualSync}
-            title="Synchronize with Hyperledger Fabric ledger"
+            title="Synchronize World State from Hyperledger Fabric"
             aria-label="Synchronize ledger"
           >
-            🔄
+            <RefreshCw size={13} />
           </button>
         </div>
 
-        {/* Active Role Indicator */}
-        <div className="header-role-card">
-          <div className="role-avatar">{currentRole.icon}</div>
-          <div className="role-info">
-            <span className="role-title">{currentRole.name}</span>
-            <span className="role-subtext">{currentRole.desc}</span>
+        {/* Authenticated User Account Details (NO ROLE SWITCHING) */}
+        <div className="header-user-account-box">
+          <div className="user-text-info">
+            <div className="user-name-line">
+              <strong className="account-user-name">{user?.name}</strong>
+              <span className="account-role-badge">{currentRoleConfig.label}</span>
+            </div>
+            <div className="user-sub-line">
+              <span className="account-org-name">{user?.organization}</span>
+              <span className="account-msp-tag">({currentRoleConfig.msp})</span>
+            </div>
           </div>
+
           <button
-            className="btn-switch-role"
-            onClick={onLogout}
-            title="Switch participant role"
+            className="btn-logout"
+            onClick={logout}
+            title="Sign out of current account"
           >
-            Switch
+            <LogOut size={14} />
+            <span>Sign Out</span>
           </button>
         </div>
       </div>

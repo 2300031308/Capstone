@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { productApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
-export default function RegisterProduct({ role }) {
+export default function RegisterProduct() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     productId: '',
     productName: '',
     batchNumber: '',
-    manufacturer: 'ManufacturerOrg',
+    manufacturer: user?.organization || 'ApexManufacturing',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitPhase, setSubmitPhase] = useState('');

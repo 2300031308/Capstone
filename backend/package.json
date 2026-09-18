@@ -11,9 +11,12 @@
   "dependencies": {
     "@grpc/grpc-js": "^1.12.5",
     "@hyperledger/fabric-gateway": "^1.7.1",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "express-validator": "^7.2.1"
+    "express-validator": "^7.2.1",
+    "jsonwebtoken": "^9.0.3"
   }
 }

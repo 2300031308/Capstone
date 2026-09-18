@@ -8,9 +8,29 @@ const api = axios.create({
   timeout: 30000,
 });
 
+// Request interceptor: Attach JWT token if user is logged in
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response interceptor: Extract clean error message
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
+    // If 401 Unauthorized or 403 Forbidden, dispatch event or handle session expiry
+    if (error.response?.status === 401 && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login?expired=true';
+    }
+
     const message =
       error.response?.data?.error ||
       error.response?.data?.message ||
@@ -21,6 +41,12 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+export const authApi = {
+  login: (credentials) => api.post('/auth/login', credentials),
+  register: (userData) => api.post('/auth/register', userData),
+  getMe: () => api.get('/auth/me'),
+};
 
 export const productApi = {
   register: (productData) => api.post('/products', productData),
@@ -34,4 +60,3 @@ export const networkApi = {
   getStatus: () => api.get('/network/status'),
   getActivity: () => api.get('/network/activity'),
 };
-

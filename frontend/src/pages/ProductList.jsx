@@ -1,10 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { productApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatusBadge from '../components/StatusBadge';
+import { RefreshCw, PackagePlus, Search, AlertCircle, X, ArrowRight } from 'lucide-react';
 
-export default function ProductList({ role }) {
+export default function ProductList() {
+  const { user } = useAuth();
+  const role = (user?.role || '').toLowerCase();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -117,14 +121,16 @@ export default function ProductList({ role }) {
             onClick={fetchProducts}
             title="Refresh from world state"
           >
-            🔄 Refresh
+            <RefreshCw size={13} />
+            <span>Refresh</span>
           </button>
           {role === 'manufacturer' && (
             <button
               className="btn btn-primary btn-sm"
               onClick={() => navigate('/register')}
             >
-              ➕ Register Product
+              <PackagePlus size={14} />
+              <span>Register Product</span>
             </button>
           )}
         </div>
@@ -132,7 +138,7 @@ export default function ProductList({ role }) {
 
       {error && (
         <div className="alert alert-error">
-          <div className="alert-icon">❌</div>
+          <AlertCircle size={18} />
           <div className="alert-content">
             <strong>Error Querying Ledger</strong>
             <p>{error}</p>
@@ -146,7 +152,7 @@ export default function ProductList({ role }) {
       {/* Filter and Search Controls Toolbar */}
       <div className="catalog-toolbar modern-card">
         <div className="search-input-wrap">
-          <span className="search-lens">🔍</span>
+          <Search size={16} className="search-lens" color="var(--text-muted)" />
           <input
             type="text"
             className="toolbar-search-input"
@@ -155,8 +161,8 @@ export default function ProductList({ role }) {
             onChange={(e) => setSearch(e.target.value)}
           />
           {search && (
-            <button className="clear-search-btn" onClick={() => setSearch('')}>
-              ✕
+            <button className="clear-search-btn" onClick={() => setSearch('')} aria-label="Clear search">
+              <X size={14} />
             </button>
           )}
         </div>
@@ -226,7 +232,7 @@ export default function ProductList({ role }) {
 
         {filteredProducts.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">🔍</div>
+            <Search size={32} color="var(--text-muted)" style={{ marginBottom: '8px' }} />
             <h4>No Products Match Your Criteria</h4>
             <p>
               {search || statusFilter !== 'ALL' || originFilter !== 'ALL'
