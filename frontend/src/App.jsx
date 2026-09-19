@@ -15,6 +15,8 @@ import RegisterProduct from './pages/RegisterProduct';
 import ProductList from './pages/ProductList';
 import ProductDetails from './pages/ProductDetails';
 import TransferCustody from './pages/TransferCustody';
+import PublicVerify from './pages/PublicVerify';
+import ProvenanceHistory from './pages/ProvenanceHistory';
 import { ShieldCheck } from 'lucide-react';
 
 export default function App() {
@@ -67,7 +69,12 @@ function AppRoutes() {
         element={<Navigate to="/register" replace />}
       />
 
-      {/* 3. Authenticated Application Shell & Protected Routes */}
+      {/* 3. Public Verification & Provenance History Routes (Unauthenticated & Authenticated) */}
+      <Route path="/verify" element={<PublicVerify />} />
+      <Route path="/history" element={<ProvenanceHistory />} />
+      <Route path="/history/:productId" element={<ProvenanceHistory />} />
+
+      {/* 4. Authenticated Application Shell & Protected Routes */}
       <Route
         path="/*"
         element={
@@ -154,27 +161,15 @@ function AppRoutes() {
                     />
                     <Route
                       path="verify"
-                      element={
-                        <ProtectedRoute>
-                          <PlaceholderPage
-                            title="Digital Signature & QR Code Verification"
-                            desc="ECDSA digital signature verification and QR validation will be enabled in Objective 2 & 3."
-                            targetObj="O2/O3"
-                          />
-                        </ProtectedRoute>
-                      }
+                      element={<PublicVerify />}
                     />
                     <Route
                       path="history"
-                      element={
-                        <ProtectedRoute>
-                          <PlaceholderPage
-                            title="Blockchain Provenance Audit Trail"
-                            desc="Complete chronological audit trail via getHistoryForKey will be enabled in Objective 5."
-                            targetObj="O5"
-                          />
-                        </ProtectedRoute>
-                      }
+                      element={<ProvenanceHistory />}
+                    />
+                    <Route
+                      path="history/:productId"
+                      element={<ProvenanceHistory />}
                     />
 
                     {/* Role Dashboard Fallback */}

@@ -19,15 +19,17 @@ export default function ProductQRCode({ productId, size = 140, showDownload = fa
   useEffect(() => {
     if (!canvasRef.current || !productId) return;
 
-    // Encode strictly the safe public identifier
-    const qrValue = String(productId).trim();
+    // Construct configurable public verification URL without exposing secrets
+    const cleanId = String(productId).trim();
+    const baseUrl = (import.meta.env.VITE_PUBLIC_VERIFICATION_URL || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/+$/, '');
+    const qrValue = `${baseUrl}/verify?id=${encodeURIComponent(cleanId)}`;
 
     QRCode.toCanvas(
       canvasRef.current,
       qrValue,
       {
         width: size,
-        margin: 1,
+        margin: 2,
         color: {
           dark: '#0f172a',
           light: '#ffffff',

@@ -19,6 +19,8 @@ import {
   Truck,
   ArrowRight,
   Lock,
+  Clock,
+  History,
 } from 'lucide-react';
 
 export default function ProductDetails() {
@@ -154,9 +156,17 @@ export default function ProductDetails() {
           <button className="btn btn-secondary btn-sm" onClick={() => navigate('/products')}>
             &larr; Back to Catalog
           </button>
-          <button className="btn btn-secondary btn-sm" onClick={fetchProduct} title="Re-query ledger">
+          <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/history?id=${product.productId}`)}>
+            <History size={13} style={{ marginRight: '5px' }} />
+            <span>Audit Trail</span>
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={() => navigate(`/verify?id=${product.productId}`)}>
+            <ShieldCheck size={13} style={{ marginRight: '5px' }} />
+            <span>Public Verify</span>
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={fetchProduct} title="Re-query ledger">
             <RefreshCw size={13} style={{ marginRight: '5px' }} />
-            <span>Refresh State</span>
+            <span>Refresh</span>
           </button>
         </div>
       </div>

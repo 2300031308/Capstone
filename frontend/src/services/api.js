@@ -25,7 +25,15 @@ api.interceptors.response.use(
   (response) => response.data,
   (error) => {
     // If 401 Unauthorized or 403 Forbidden, dispatch event or handle session expiry
-    if (error.response?.status === 401 && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+    // Exclude public pages so guest visitors are not redirected to login
+    const isPublicPath =
+      window.location.pathname === '/' ||
+      window.location.pathname === '/login' ||
+      window.location.pathname === '/register' ||
+      window.location.pathname.startsWith('/verify') ||
+      window.location.pathname.startsWith('/history');
+
+    if (error.response?.status === 401 && !isPublicPath) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login?expired=true';
@@ -46,6 +54,11 @@ export const authApi = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
   getMe: () => api.get('/auth/me'),
+};
+
+export const publicApi = {
+  verify: (productId) => api.get(`/public/products/${encodeURIComponent(productId)}/verify`),
+  getHistory: (productId) => api.get(`/public/products/${encodeURIComponent(productId)}/history`),
 };
 
 export const productApi = {

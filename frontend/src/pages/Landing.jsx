@@ -50,13 +50,20 @@ export default function Landing() {
           <div className="hero-cta-group">
             <button
               className="btn btn-primary btn-lg"
+              onClick={() => navigate('/verify')}
+            >
+              <ShieldCheck size={16} style={{ marginRight: '6px' }} />
+              <span>Verify Product / Scan QR</span>
+            </button>
+            <button
+              className="btn btn-secondary btn-lg"
               onClick={() => scrollToSection('capabilities')}
             >
               <span>Explore Platform</span>
               <ArrowRight size={16} style={{ marginLeft: '6px' }} />
             </button>
             <button
-              className="btn btn-secondary btn-lg"
+              className="btn btn-ghost btn-lg"
               onClick={() => navigate('/login')}
             >
               <span>Sign In to Portal</span>

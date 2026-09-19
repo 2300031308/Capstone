@@ -9,6 +9,7 @@ const cors = require('cors');
 const productRoutes = require('./routes/productRoutes');
 const networkRoutes = require('./routes/networkRoutes');
 const authRoutes = require('./routes/authRoutes');
+const publicRoutes = require('./routes/publicRoutes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -35,6 +36,7 @@ app.get('/api/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/public', publicRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/network', networkRoutes);
 

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { productApi } from '../services/api';
+import { productApi, publicApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatusBadge from '../components/StatusBadge';
+import QRScannerModal from '../components/QRScannerModal';
 import {
   ShieldCheck,
   Search,
@@ -14,6 +15,8 @@ import {
   Boxes,
   Lock,
   ExternalLink,
+  History,
+  XCircle,
 } from 'lucide-react';
 
 export default function CustomerDashboard() {
@@ -24,6 +27,7 @@ export default function CustomerDashboard() {
   const [searchError, setSearchError] = useState(null);
   const [catalogProducts, setCatalogProducts] = useState([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -41,9 +45,8 @@ export default function CustomerDashboard() {
     loadCatalog();
   }, []);
 
-  const handleSearch = async (e) => {
-    if (e) e.preventDefault();
-    const cleanId = searchId.trim();
+  const handleVerifyId = async (targetId) => {
+    const cleanId = (targetId || '').trim();
     if (!cleanId) return;
 
     setSearchLoading(true);
@@ -51,7 +54,7 @@ export default function CustomerDashboard() {
     setSearchResult(null);
 
     try {
-      const res = await productApi.getById(cleanId);
+      const res = await publicApi.verify(cleanId);
       if (res && res.data) {
         setSearchResult(res.data);
       } else {
@@ -64,10 +67,19 @@ export default function CustomerDashboard() {
     }
   };
 
+  const handleSearch = (e) => {
+    if (e) e.preventDefault();
+    handleVerifyId(searchId);
+  };
+
   const handleSelectProduct = (prod) => {
     setSearchId(prod.productId);
-    setSearchResult(prod);
-    setSearchError(null);
+    handleVerifyId(prod.productId);
+  };
+
+  const handleScanSuccess = (scannedId) => {
+    setSearchId(scannedId);
+    handleVerifyId(scannedId);
   };
 
   return (
@@ -103,8 +115,8 @@ export default function CustomerDashboard() {
             Verify cryptographic authenticity and complete supply chain provenance directly against the Hyperledger Fabric immutable ledger.
           </p>
 
-          <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', maxWidth: '520px', margin: '0 auto' }}>
-            <div style={{ position: 'relative', flex: 1 }}>
+          <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', maxWidth: '560px', margin: '0 auto', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: '1 1 280px' }}>
               <Search
                 size={16}
                 color="var(--text-muted)"
@@ -114,7 +126,7 @@ export default function CustomerDashboard() {
                 type="text"
                 className="form-control"
                 style={{ paddingLeft: '36px', height: '42px', fontSize: '0.95rem' }}
-                placeholder="Enter Product ID (e.g., PROD-001)"
+                placeholder="Enter Product ID (e.g., TC2545, SENS-101)"
                 value={searchId}
                 onChange={(e) => setSearchId(e.target.value)}
               />
@@ -126,6 +138,16 @@ export default function CustomerDashboard() {
               disabled={searchLoading || !searchId.trim()}
             >
               {searchLoading ? 'Verifying...' : 'Verify Product'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ height: '42px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              onClick={() => setIsScannerOpen(true)}
+              title="Scan QR Code"
+            >
+              <QrCode size={16} color="var(--primary)" />
+              <span>Scan QR</span>
             </button>
           </form>
 
@@ -160,29 +182,104 @@ export default function CustomerDashboard() {
       )}
 
       {searchResult && (
-        <div className="card modern-card" style={{ marginBottom: '24px', borderLeft: '4px solid var(--success)' }}>
+        <div
+          className="card modern-card"
+          style={{
+            marginBottom: '24px',
+            borderLeft: `4px solid ${searchResult.authentic ? 'var(--success)' : 'var(--danger)'}`,
+          }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <ShieldCheck size={28} color="var(--success)" />
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '8px',
+                  background: searchResult.authentic ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {searchResult.authentic ? (
+                  <ShieldCheck size={28} color="var(--success)" />
+                ) : (
+                  <AlertTriangle size={28} color="var(--danger)" />
+                )}
               </div>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <h3 style={{ margin: 0, fontSize: '1.25rem' }}>{searchResult.productName}</h3>
-                  <span className="badge badge-success">Cryptographically Authenticated</span>
+                  <span
+                    className={`badge ${
+                      searchResult.authentic
+                        ? 'badge-success'
+                        : searchResult.status === 'LEGACY'
+                        ? 'badge-default'
+                        : 'badge-danger'
+                    }`}
+                  >
+                    {searchResult.authentic ? 'Cryptographically Authenticated' : searchResult.status}
+                  </span>
                 </div>
                 <span className="font-mono text-sm text-muted">ID: {searchResult.productId}</span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => navigate(`/history?id=${searchResult.productId}`)}
+              >
+                <History size={13} style={{ marginRight: '4px' }} />
+                <span>Provenance History</span>
+              </button>
               <button
                 className="btn btn-secondary btn-sm"
-                onClick={() => navigate(`/products/${searchResult.productId}`)}
+                onClick={() => navigate(`/verify?id=${searchResult.productId}`)}
               >
-                <span>Complete Provenance Record</span>
-                <ExternalLink size={13} />
+                <ShieldCheck size={13} style={{ marginRight: '4px' }} />
+                <span>Verification Portal</span>
+                <ExternalLink size={12} style={{ marginLeft: '4px' }} />
               </button>
+            </div>
+          </div>
+
+          {/* Cryptographic Proof Evidence */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '12px',
+              padding: '12px',
+              background: 'var(--bg-main)',
+              borderRadius: '8px',
+              border: '1px solid var(--border)',
+              marginBottom: '16px',
+            }}
+          >
+            <div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Data Integrity (SHA-256)</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                <CheckCircle2 size={14} color={searchResult.dataIntegrity === 'Verified' ? 'var(--success)' : 'var(--danger)'} />
+                <strong style={{ fontSize: '0.88rem' }}>{searchResult.dataIntegrity || 'Verified'}</strong>
+              </div>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Digital Signature (ECDSA)</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                <CheckCircle2 size={14} color={searchResult.digitalSignature === 'Valid' ? 'var(--success)' : 'var(--danger)'} />
+                <strong style={{ fontSize: '0.88rem' }}>{searchResult.digitalSignature || 'Valid'}</strong>
+              </div>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Origin Signer</span>
+              <strong style={{ fontSize: '0.88rem' }}>{searchResult.manufacturerIdentity || 'Verified'} (Org1MSP)</strong>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Current Custodian</span>
+              <strong style={{ fontSize: '0.88rem' }}>{searchResult.currentOwner}</strong>
             </div>
           </div>
 
@@ -201,7 +298,7 @@ export default function CustomerDashboard() {
             </div>
             <div>
               <span className="meta-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Ledger State</span>
-              <StatusBadge status={searchResult.status} />
+              <StatusBadge status={searchResult.currentStatus || searchResult.status} />
             </div>
           </div>
 
@@ -358,6 +455,13 @@ export default function CustomerDashboard() {
           <strong>Tamper-Proof Consumer Protection:</strong> Every product record is permanently recorded on Hyperledger Fabric channel <code>mychannel</code> with SHA-256 digital signatures and cryptographic proof of origin. Records cannot be altered, spoofed, or deleted.
         </div>
       </div>
+
+      {/* QR Scanner Modal */}
+      <QRScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={handleScanSuccess}
+      />
     </div>
   );
 }

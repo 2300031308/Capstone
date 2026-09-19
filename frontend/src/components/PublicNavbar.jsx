@@ -53,6 +53,11 @@ export default function PublicNavbar() {
 
         {/* Action Buttons */}
         <div className="public-nav-actions">
+          <Link to="/verify" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <ShieldCheck size={14} color="var(--primary)" />
+            <span>Verify Product</span>
+          </Link>
+
           {isAuthenticated && user ? (
             <div className="auth-user-quick-box">
               <button
