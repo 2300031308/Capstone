@@ -20,18 +20,18 @@ export default function Sidebar() {
       case 'manufacturer':
         return [
           {
-            title: 'Manufacturer Operations',
+            title: 'Manufacturer',
             items: [
               { path: '/manufacturer/dashboard', icon: LayoutDashboard, label: 'Overview' },
               { path: '/register-product', icon: PackagePlus, label: 'Register Product' },
-              { path: '/products', icon: Boxes, label: 'Manufactured Assets' },
+              { path: '/products', icon: Boxes, label: 'Products' },
             ],
           },
           {
-            title: 'Verification & Audit',
+            title: 'Verification',
             items: [
-              { path: '/verify', icon: ShieldCheck, label: 'Verify Product', tag: 'O3' },
-              { path: '/history', icon: History, label: 'Provenance History', tag: 'O5' },
+              { path: '/verify', icon: ShieldCheck, label: 'Verify Product' },
+              { path: '/history', icon: History, label: 'Provenance' },
             ],
           },
         ];
@@ -129,7 +129,7 @@ export default function Sidebar() {
         ))}
       </div>
 
-      {role !== 'customer' && (
+      {role !== 'customer' && role !== 'manufacturer' && (
         <div className="sidebar-footer">
           <div className="network-meta-box">
             <div className="meta-row">

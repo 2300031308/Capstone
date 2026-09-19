@@ -14,6 +14,7 @@ import {
   Cpu,
   ArrowRight,
 } from 'lucide-react';
+import ProductQRCode from '../components/ProductQRCode';
 
 export default function RegisterProduct() {
   const navigate = useNavigate();
@@ -97,11 +98,11 @@ export default function RegisterProduct() {
       clearTimeout(phase3Timer);
       console.error('Registration failed:', err);
 
-      let cleanMsg = err.message || 'Failed to submit transaction to ledger';
+      let cleanMsg = err.message || 'Unable to commit the transaction. Please try again.';
       if (cleanMsg.includes('already exists') || cleanMsg.includes('already registered')) {
-        cleanMsg = `Product ID "${cleanId}" already exists on the ledger. Product IDs must be globally unique.`;
-      } else if (cleanMsg.includes('ABORTED') || cleanMsg.includes('failed to endorse')) {
-        cleanMsg = `Transaction rejected by endorsing peers: Product ID "${cleanId}" is already committed or endorsement failed.`;
+        cleanMsg = 'Product ID already exists on the ledger. Please use a different Product ID.';
+      } else {
+        cleanMsg = 'Unable to commit the transaction. Please try again.';
       }
       setError(cleanMsg);
     } finally {
@@ -125,15 +126,15 @@ export default function RegisterProduct() {
         </button>
       </div>
 
-      {/* Confirmed Receipt Card */}
-      {receipt && (
+      {/* Confirmed Receipt Screen (Shown ONLY upon successful registration) */}
+      {receipt ? (
         <div className="receipt-card modern-card">
           <div className="receipt-header">
             <div className="receipt-badge-icon">
               <CheckCircle2 size={24} color="var(--success)" />
             </div>
             <div>
-              <h3>Ledger Transaction Committed</h3>
+              <h3>Product Registered Successfully</h3>
               <p className="receipt-sub">
                 Product origin record successfully verified and written to the distributed ledger
               </p>
@@ -173,12 +174,47 @@ export default function RegisterProduct() {
             </div>
           </div>
 
-          <div className="receipt-actions">
+          {/* Cryptographic Authenticity & QR Code Section */}
+          <div
+            style={{
+              marginTop: '16px',
+              padding: '14px',
+              background: '#f8fafc',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '14px',
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                <ShieldCheck size={16} color="var(--success)" />
+                <strong style={{ fontSize: '0.86rem', color: '#0f172a' }}>Cryptographic Authenticity Established</strong>
+              </div>
+              <p style={{ margin: '0 0 6px', fontSize: '0.78rem', color: '#64748b' }}>
+                Deterministic SHA-256 hash &amp; ECDSA signature committed to Fabric world state.
+              </p>
+              {receipt.productHash && (
+                <div style={{ fontSize: '0.75rem', color: '#475569' }}>
+                  <span style={{ color: '#64748b' }}>Digest:</span>{' '}
+                  <code style={{ fontSize: '0.74rem' }}>
+                    {receipt.productHash.substring(0, 16)}...{receipt.productHash.substring(48)}
+                  </code>
+                </div>
+              )}
+            </div>
+            <ProductQRCode productId={receipt.productId} size={90} showDownload={true} />
+          </div>
+
+          <div className="receipt-actions" style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
             <button
               className="btn btn-primary"
               onClick={() => navigate(`/products/${receipt.productId}`)}
             >
-              Inspect Product on Ledger &rarr;
+              View Product &rarr;
             </button>
             <button
               className="btn btn-secondary"
@@ -190,28 +226,28 @@ export default function RegisterProduct() {
               className="btn btn-secondary"
               onClick={() => navigate('/manufacturer/dashboard')}
             >
-              Return to Console
+              Return to Dashboard
             </button>
           </div>
         </div>
-      )}
+      ) : (
+        <>
+          {/* Error Alert */}
+          {error && (
+            <div className="alert alert-error">
+              <AlertCircle size={16} />
+              <div className="alert-content">
+                <strong>Registration Rejection</strong>
+                <p>{error}</p>
+              </div>
+              <button className="btn btn-secondary btn-sm" onClick={() => setError(null)}>
+                Dismiss
+              </button>
+            </div>
+          )}
 
-      {/* Error Alert */}
-      {error && (
-        <div className="alert alert-error">
-          <AlertCircle size={16} />
-          <div className="alert-content">
-            <strong>Registration Rejection</strong>
-            <p>{error}</p>
-          </div>
-          <button className="btn btn-secondary btn-sm" onClick={() => setError(null)}>
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      {/* Registration Form Card */}
-      <div className="card modern-card form-card">
+          {/* Registration Form Card */}
+          <div className="card modern-card form-card">
         <form onSubmit={handleSubmit} className="enterprise-form">
           <div className="form-grid">
             {/* Product ID */}
@@ -307,7 +343,7 @@ export default function RegisterProduct() {
               onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
             >
               <Cpu size={14} />
-              <span>{showTechnicalDetails ? 'Hide Technical / Consensus Parameters' : 'View Technical / Consensus Parameters (Viva)'}</span>
+              <span>{showTechnicalDetails ? '- Technical Details' : '+ Technical Details'}</span>
               {showTechnicalDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
 
@@ -315,15 +351,15 @@ export default function RegisterProduct() {
               <div style={{ marginTop: '10px', padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.8rem' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
                   <div>
+                    <span style={{ color: '#64748b', display: 'block' }}>Channel:</span>
+                    <code style={{ color: '#0f172a', fontWeight: 600 }}>mychannel</code>
+                  </div>
+                  <div>
                     <span style={{ color: '#64748b', display: 'block' }}>Smart Contract Method:</span>
                     <code style={{ color: '#0f172a', fontWeight: 600 }}>SupplyChainContract:registerProduct</code>
                   </div>
                   <div>
-                    <span style={{ color: '#64748b', display: 'block' }}>Ledger Channel:</span>
-                    <code style={{ color: '#0f172a', fontWeight: 600 }}>mychannel</code>
-                  </div>
-                  <div>
-                    <span style={{ color: '#64748b', display: 'block' }}>Endorsement Policy:</span>
+                    <span style={{ color: '#64748b', display: 'block' }}>Endorsement Information:</span>
                     <code style={{ color: '#0f172a', fontWeight: 600 }}>Org1MSP &amp; Org2MSP</code>
                   </div>
                 </div>
@@ -364,6 +400,8 @@ export default function RegisterProduct() {
           </div>
         </form>
       </div>
+    </>
+  )}
 
       {/* Multi-step Processing Modal Overlay */}
       {isSubmitting && (

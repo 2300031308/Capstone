@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "echo \"Tests pending\""
+    "test": "node test/verifyAuthenticityTest.js",
+    "test:ledger": "node test/ledgerVerificationTest.js"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.12.5",

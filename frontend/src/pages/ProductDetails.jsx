@@ -3,16 +3,32 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { productApi } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatusBadge from '../components/StatusBadge';
-import { Copy, Check, RefreshCw, ShieldCheck, AlertCircle } from 'lucide-react';
+import ProductQRCode from '../components/ProductQRCode';
+import {
+  Copy,
+  Check,
+  RefreshCw,
+  ShieldCheck,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  QrCode,
+  ShieldAlert,
+  Info,
+} from 'lucide-react';
 
 export default function ProductDetails() {
   const { productId } = useParams();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
+  const [verification, setVerification] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
   const [showRawJson, setShowRawJson] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedHash, setCopiedHash] = useState(false);
+  const [copiedSig, setCopiedSig] = useState(false);
 
   useEffect(() => {
     fetchProduct();
@@ -22,11 +38,19 @@ export default function ProductDetails() {
     try {
       setLoading(true);
       setError(null);
-      const response = await productApi.getById(productId);
-      if (response && response.data) {
-        setProduct(response.data);
+      const [prodRes, verifyRes] = await Promise.all([
+        productApi.getById(productId),
+        productApi.verify(productId).catch(() => ({ data: null })),
+      ]);
+
+      if (prodRes && prodRes.data) {
+        setProduct(prodRes.data);
       } else {
         throw new Error('Product not found in Hyperledger Fabric world state');
+      }
+
+      if (verifyRes && verifyRes.data) {
+        setVerification(verifyRes.data);
       }
     } catch (err) {
       console.error('Failed to retrieve product details:', err);
@@ -36,10 +60,19 @@ export default function ProductDetails() {
     }
   };
 
-  const copyToClipboard = (text) => {
+  const copyText = (text, type) => {
+    if (!text) return;
     navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (type === 'id') {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } else if (type === 'hash') {
+      setCopiedHash(true);
+      setTimeout(() => setCopiedHash(false), 2000);
+    } else if (type === 'sig') {
+      setCopiedSig(true);
+      setTimeout(() => setCopiedSig(false), 2000);
+    }
   };
 
   if (loading) {
@@ -87,7 +120,7 @@ export default function ProductDetails() {
             <span className="id-value">{product.productId}</span>
             <button
               className="copy-btn"
-              onClick={() => copyToClipboard(product.productId)}
+              onClick={() => copyText(product.productId, 'id')}
               title="Copy Product ID"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
             >
@@ -107,7 +140,7 @@ export default function ProductDetails() {
           <div>
             <h2 className="page-title">{product.productName}</h2>
             <p className="page-subtitle">
-              Verified record on channel <code>mychannel</code> &bull; Fabric World State
+              Supply Chain Asset &bull; Origin: <strong>{product.manufacturer}</strong>
             </p>
           </div>
         </div>
@@ -123,129 +156,363 @@ export default function ProductDetails() {
         </div>
       </div>
 
-      {/* Main Grid: Details + Verification Card */}
-      <div className="details-grid-layout">
-        {/* Left Card: Core Asset Attributes */}
-        <div className="card modern-card details-main-card">
-          <div className="card-header-bar">
-            <h3 className="card-title">Asset Specification</h3>
-            <StatusBadge status={product.status} isGenesis={isGenesis} />
+      {/* Authenticity Verification Card */}
+      <div className="card modern-card" style={{ marginBottom: '20px' }}>
+        <div className="card-header-bar" style={{ marginBottom: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShieldCheck size={20} color="var(--primary)" />
+            <h3 className="card-title" style={{ margin: 0 }}>Authenticity Verification</h3>
           </div>
 
-          <div className="spec-grid">
-            <div className="spec-item">
-              <span className="spec-label">Product Identifier</span>
-              <span className="spec-value mono"><strong>{product.productId}</strong></span>
-            </div>
+          {verification?.status === 'AUTHENTIC' && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 12px',
+                borderRadius: '16px',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                background: 'rgba(16, 185, 129, 0.1)',
+                color: '#059669',
+                border: '1px solid rgba(16, 185, 129, 0.25)',
+              }}
+            >
+              <Check size={14} />
+              <span>Authentic Product</span>
+            </span>
+          )}
 
-            <div className="spec-item">
-              <span className="spec-label">Commercial Asset Name</span>
-              <span className="spec-value">{product.productName}</span>
-            </div>
+          {verification?.status === 'LEGACY' && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 12px',
+                borderRadius: '16px',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                background: 'rgba(100, 116, 139, 0.1)',
+                color: '#475569',
+                border: '1px solid rgba(100, 116, 139, 0.25)',
+              }}
+            >
+              <Info size={14} />
+              <span>Legacy Record</span>
+            </span>
+          )}
 
-            <div className="spec-item">
-              <span className="spec-label">Production Batch Number</span>
-              <span className="spec-value mono code-pill">{product.batchNumber}</span>
-            </div>
-
-            <div className="spec-item">
-              <span className="spec-label">Origin Manufacturer (Org1MSP)</span>
-              <span className="spec-value">{product.manufacturer}</span>
-            </div>
-
-            <div className="spec-item">
-              <span className="spec-label">Current Custodian / Owner</span>
-              <span className="spec-value highlight">{product.currentOwner}</span>
-            </div>
-
-            <div className="spec-item">
-              <span className="spec-label">World State Document Type</span>
-              <span className="spec-value mono">{product.docType || 'product'}</span>
-            </div>
-
-            <div className="spec-item">
-              <span className="spec-label">Ledger Registration Time</span>
-              <span className="spec-value">
-                {product.createdAt ? new Date(product.createdAt).toLocaleString() : '—'}
-              </span>
-            </div>
-
-            <div className="spec-item">
-              <span className="spec-label">Last State Mutation Time</span>
-              <span className="spec-value">
-                {product.updatedAt ? new Date(product.updatedAt).toLocaleString() : '—'}
-              </span>
-            </div>
-          </div>
+          {verification && verification.status !== 'AUTHENTIC' && verification.status !== 'LEGACY' && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 12px',
+                borderRadius: '16px',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                background: 'rgba(239, 68, 68, 0.1)',
+                color: '#dc2626',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+              }}
+            >
+              <ShieldAlert size={14} />
+              <span>Verification Failed</span>
+            </span>
+          )}
         </div>
 
-        {/* Right Card: Blockchain Verification Ledger Card */}
-        <div className="card modern-card ledger-verification-card">
-          <div className="card-header-bar">
-            <h3 className="card-title">Blockchain Verification</h3>
-            <span className="verified-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-              <ShieldCheck size={14} />
-              <span>Valid State</span>
+        {verification?.status === 'AUTHENTIC' && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '12px',
+              background: '#f8fafc',
+              padding: '16px',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0',
+            }}
+          >
+            <div>
+              <span style={{ color: '#64748b', fontSize: '0.78rem', display: 'block' }}>Product Record</span>
+              <strong style={{ color: '#059669', fontSize: '0.92rem' }}>Verified</strong>
+            </div>
+            <div>
+              <span style={{ color: '#64748b', fontSize: '0.78rem', display: 'block' }}>Data Integrity</span>
+              <strong style={{ color: '#059669', fontSize: '0.92rem' }}>Verified</strong>
+            </div>
+            <div>
+              <span style={{ color: '#64748b', fontSize: '0.78rem', display: 'block' }}>Digital Signature</span>
+              <strong style={{ color: '#059669', fontSize: '0.92rem' }}>Valid</strong>
+            </div>
+            <div>
+              <span style={{ color: '#64748b', fontSize: '0.78rem', display: 'block' }}>Manufacturer Identity</span>
+              <strong style={{ color: '#059669', fontSize: '0.92rem' }}>Verified</strong>
+            </div>
+          </div>
+        )}
+
+        {verification?.status === 'LEGACY' && (
+          <div className="alert alert-info" style={{ margin: 0 }}>
+            <Info size={16} />
+            <div className="alert-content" style={{ fontSize: '0.85rem' }}>
+              Cryptographic verification data not available for this legacy record.
+            </div>
+          </div>
+        )}
+
+        {verification && verification.status !== 'AUTHENTIC' && verification.status !== 'LEGACY' && (
+          <div className="alert alert-error" style={{ margin: 0 }}>
+            <AlertCircle size={16} />
+            <div className="alert-content" style={{ fontSize: '0.85rem' }}>
+              {verification.message || 'Cryptographic verification check failed.'}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Primary Asset Specification Card */}
+      <div className="card modern-card" style={{ marginBottom: '20px' }}>
+        <div className="card-header-bar" style={{ marginBottom: '20px' }}>
+          <div>
+            <h3 className="card-title">Product Details</h3>
+            <p className="card-subtitle">Verified asset record on ledger</p>
+          </div>
+          <StatusBadge status={product.status} isGenesis={isGenesis} />
+        </div>
+
+        <div className="spec-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+          <div className="spec-item">
+            <span className="spec-label">Product ID</span>
+            <span className="spec-value mono"><strong>{product.productId}</strong></span>
+          </div>
+
+          <div className="spec-item">
+            <span className="spec-label">Product Name</span>
+            <span className="spec-value">{product.productName}</span>
+          </div>
+
+          <div className="spec-item">
+            <span className="spec-label">Batch Number</span>
+            <span className="spec-value mono code-pill">{product.batchNumber}</span>
+          </div>
+
+          <div className="spec-item">
+            <span className="spec-label">Manufacturer</span>
+            <span className="spec-value">{product.manufacturer}</span>
+          </div>
+
+          <div className="spec-item">
+            <span className="spec-label">Current Custodian</span>
+            <span className="spec-value highlight">{product.currentOwner}</span>
+          </div>
+
+          <div className="spec-item">
+            <span className="spec-label">Status</span>
+            <span className="spec-value"><StatusBadge status={product.status} isGenesis={isGenesis} /></span>
+          </div>
+
+          <div className="spec-item">
+            <span className="spec-label">Registration Time</span>
+            <span className="spec-value">
+              {product.createdAt ? new Date(product.createdAt).toLocaleString() : '—'}
             </span>
           </div>
 
-          <p className="ledger-desc">
-            This record is cryptographically committed to the Hyperledger Fabric ledger across peer nodes.
-          </p>
-
-          <div className="ledger-meta-list">
-            <div className="ledger-meta-row">
-              <span className="label">Network Framework:</span>
-              <span className="val">Hyperledger Fabric 2.5 (LTS)</span>
-            </div>
-            <div className="ledger-meta-row">
-              <span className="label">Channel Name:</span>
-              <span className="val mono">mychannel</span>
-            </div>
-            <div className="ledger-meta-row">
-              <span className="label">Smart Contract:</span>
-              <span className="val mono">supplychain (v1.0)</span>
-            </div>
-            <div className="ledger-meta-row">
-              <span className="label">Endorsement Consensus:</span>
-              <span className="val">Org1MSP &amp; Org2MSP</span>
-            </div>
-            <div className="ledger-meta-row">
-              <span className="label">State Database:</span>
-              <span className="val">CouchDB (<code>mychannel_supplychain</code>)</span>
-            </div>
-            <div className="ledger-meta-row">
-              <span className="label">Ordering Service:</span>
-              <span className="val">Raft Crash Fault Tolerant (CFT)</span>
-            </div>
+          <div className="spec-item">
+            <span className="spec-label">Last Update</span>
+            <span className="spec-value">
+              {product.updatedAt ? new Date(product.updatedAt).toLocaleString() : '—'}
+            </span>
           </div>
+        </div>
 
-          <div className="raw-json-trigger-wrap">
-            <button
-              className="btn btn-secondary btn-sm"
-              style={{ width: '100%' }}
-              onClick={() => setShowRawJson(!showRawJson)}
-            >
-              {showRawJson ? 'Hide Raw World State Record' : '{ } View Raw World State Record'}
-            </button>
+        {/* QR Code Section */}
+        <div
+          style={{
+            marginTop: '20px',
+            paddingTop: '16px',
+            borderTop: '1px solid #e2e8f0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '16px',
+          }}
+        >
+          <div>
+            <h4 style={{ margin: '0 0 4px', fontSize: '0.9rem', color: '#0f172a' }}>Product Verification QR Code</h4>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+              Physical asset verification reference for supply chain checkpoints.
+            </p>
           </div>
+          <ProductQRCode productId={product.productId} size={110} showDownload={true} />
         </div>
       </div>
 
-      {/* Raw World State JSON Collapsible */}
-      {showRawJson && (
-        <div className="card modern-card" style={{ marginTop: '20px' }}>
-          <div className="card-header-bar">
-            <h3 className="card-title">World State JSON Document (CouchDB)</h3>
-            <span className="mono" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Key: {product.productId}
-            </span>
+      {/* Technical Verification Details (Collapsed by Default) */}
+      <div className="card modern-card" style={{ marginBottom: '20px' }}>
+        <button
+          type="button"
+          onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
+          style={{
+            background: 'none',
+            border: 'none',
+            width: '100%',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '4px 0',
+            cursor: 'pointer',
+            textAlign: 'left',
+          }}
+          aria-expanded={showTechnicalDetails}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShieldCheck size={18} color="var(--primary)" />
+            <h3 className="card-title" style={{ margin: 0, fontSize: '1rem' }}>
+              Technical Verification Details
+            </h3>
           </div>
-          <pre className="raw-json-viewer">
-            {JSON.stringify(product, null, 2)}
-          </pre>
-        </div>
-      )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary)', fontSize: '0.85rem', fontWeight: 600 }}>
+            <span>{showTechnicalDetails ? 'Hide' : 'Show'}</span>
+            {showTechnicalDetails ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </div>
+        </button>
+
+        {showTechnicalDetails && (
+          <div style={{ marginTop: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+            {/* Cryptographic Proof Metadata */}
+            {product.productHash && (
+              <div style={{ marginBottom: '16px', background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <h4 style={{ margin: '0 0 10px', fontSize: '0.85rem', color: '#0f172a' }}>Cryptographic Proof Metadata</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '0.78rem', color: '#64748b' }}>SHA-256 Data Digest:</span>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ padding: '2px 6px', fontSize: '0.72rem' }}
+                        onClick={() => copyText(product.productHash, 'hash')}
+                      >
+                        {copiedHash ? <Check size={11} color="var(--success)" /> : <Copy size={11} />}
+                        <span style={{ marginLeft: '4px' }}>{copiedHash ? 'Copied' : 'Copy Full Hash'}</span>
+                      </button>
+                    </div>
+                    <code style={{ fontSize: '0.8rem', color: 'var(--primary)', wordBreak: 'break-all' }}>
+                      {product.productHash.length > 24
+                        ? `${product.productHash.substring(0, 16)}...${product.productHash.substring(48)}`
+                        : product.productHash}
+                    </code>
+                  </div>
+
+                  {product.digitalSignature && (
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '0.78rem', color: '#64748b' }}>ECDSA Digital Signature (P-256):</span>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          style={{ padding: '2px 6px', fontSize: '0.72rem' }}
+                          onClick={() => copyText(product.digitalSignature, 'sig')}
+                        >
+                          {copiedSig ? <Check size={11} color="var(--success)" /> : <Copy size={11} />}
+                          <span style={{ marginLeft: '4px' }}>{copiedSig ? 'Copied' : 'Copy Full Signature'}</span>
+                        </button>
+                      </div>
+                      <code style={{ fontSize: '0.8rem', color: '#475569', wordBreak: 'break-all' }}>
+                        {product.digitalSignature.length > 40
+                          ? `${product.digitalSignature.substring(0, 20)}...${product.digitalSignature.substring(product.digitalSignature.length - 20)}`
+                          : product.digitalSignature}
+                      </code>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px', fontSize: '0.78rem' }}>
+                    <div>
+                      <span style={{ color: '#64748b' }}>Signature Status:</span>{' '}
+                      <strong style={{ color: '#059669' }}>Valid</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b' }}>Signer Identity:</span>{' '}
+                      <strong>Org1MSP (ManufacturerOrg)</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <p style={{ color: '#64748b', fontSize: '0.84rem', margin: '0 0 16px' }}>
+              Cryptographic ledger consensus and world state metadata recorded across peer nodes.
+            </p>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                gap: '12px',
+                marginBottom: '16px',
+                background: '#f8fafc',
+                padding: '16px',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <div>
+                <span style={{ color: '#64748b', fontSize: '0.78rem', display: 'block' }}>Network Framework</span>
+                <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>Hyperledger Fabric 2.5 (LTS)</strong>
+              </div>
+              <div>
+                <span style={{ color: '#64748b', fontSize: '0.78rem', display: 'block' }}>Channel Name</span>
+                <code style={{ fontSize: '0.85rem', color: '#0f172a' }}>mychannel</code>
+              </div>
+              <div>
+                <span style={{ color: '#64748b', fontSize: '0.78rem', display: 'block' }}>Smart Contract</span>
+                <code style={{ fontSize: '0.85rem', color: '#0f172a' }}>supplychain (v1.1)</code>
+              </div>
+              <div>
+                <span style={{ color: '#64748b', fontSize: '0.78rem', display: 'block' }}>Endorsement Consensus</span>
+                <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>Org1MSP &amp; Org2MSP</strong>
+              </div>
+              <div>
+                <span style={{ color: '#64748b', fontSize: '0.78rem', display: 'block' }}>State Database</span>
+                <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>CouchDB (<code>mychannel_supplychain</code>)</strong>
+              </div>
+              <div>
+                <span style={{ color: '#64748b', fontSize: '0.78rem', display: 'block' }}>Ordering Service</span>
+                <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>Raft Crash Fault Tolerant (CFT)</strong>
+              </div>
+              <div>
+                <span style={{ color: '#64748b', fontSize: '0.78rem', display: 'block' }}>World State Document Type</span>
+                <code style={{ fontSize: '0.85rem', color: '#0f172a' }}>{product.docType || 'product'}</code>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setShowRawJson(!showRawJson)}
+              >
+                {showRawJson ? 'Hide Raw World State Record' : '{ } View Raw World State Record'}
+              </button>
+            </div>
+
+            {showRawJson && (
+              <div style={{ marginTop: '14px' }}>
+                <pre className="raw-json-viewer">
+                  {JSON.stringify(product, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

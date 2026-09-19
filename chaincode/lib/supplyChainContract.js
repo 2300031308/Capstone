@@ -85,7 +85,7 @@ class SupplyChainContract extends Contract {
     /**
      * Register a new product on the ledger.
      */
-    async registerProduct(ctx, productId, productName, batchNumber, manufacturer) {
+    async registerProduct(ctx, productId, productName, batchNumber, manufacturer, productHash, digitalSignature) {
         if (!productId || !productName || !batchNumber || !manufacturer) {
             throw new Error('All fields are required: productId, productName, batchNumber, manufacturer');
         }
@@ -94,6 +94,9 @@ class SupplyChainContract extends Contract {
         if (exists) {
             throw new Error(`Product ${productId} already exists`);
         }
+
+        const pHash = (productHash && typeof productHash === 'string' && productHash.trim().length > 0) ? productHash.trim() : null;
+        const pSig = (digitalSignature && typeof digitalSignature === 'string' && digitalSignature.trim().length > 0) ? digitalSignature.trim() : null;
 
         const product = {
             productId,
@@ -105,6 +108,8 @@ class SupplyChainContract extends Contract {
             createdAt: this._getTxTimestamp(ctx),
             updatedAt: this._getTxTimestamp(ctx),
             docType: 'product',
+            productHash: pHash,
+            digitalSignature: pSig,
         };
 
         await ctx.stub.putState(productId, Buffer.from(JSON.stringify(product)));
@@ -113,6 +118,8 @@ class SupplyChainContract extends Contract {
             productId,
             productName,
             manufacturer,
+            productHash: product.productHash,
+            digitalSignature: product.digitalSignature,
         })));
 
         return JSON.stringify(product);

@@ -23,6 +23,7 @@ router.post(
 // Product queries: All authenticated participants can view products
 router.get('/', authenticateToken, productController.getAllProducts);
 router.get('/:productId', authenticateToken, productController.getProduct);
+router.get('/:productId/verify', authenticateToken, productController.verifyProduct);
 
 // Ownership transfer: Authorized for supply chain custodians (O4)
 router.post(

@@ -18,6 +18,8 @@ import {
   History,
   X,
   AlertCircle,
+  ShieldAlert,
+  Info,
 } from 'lucide-react';
 
 export default function ManufacturerDashboard() {
@@ -28,6 +30,11 @@ export default function ManufacturerDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [expandedActivities, setExpandedActivities] = useState({});
+
+  const toggleActivityDetails = (id) => {
+    setExpandedActivities((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   // Quick Verification / Provenance Modal State
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
@@ -89,30 +96,32 @@ export default function ManufacturerDashboard() {
     setVerifyResult(null);
 
     try {
-      const res = await productApi.getById(cleanId);
+      const res = await productApi.verify(cleanId);
       if (res && res.data) {
         setVerifyResult(res.data);
       } else {
-        setVerifyError(`Product "${cleanId}" was not found on the ledger.`);
+        setVerifyError('Product does not exist on the ledger.');
       }
     } catch (err) {
-      setVerifyError(err.message || `No ledger record found for Product ID "${cleanId}"`);
+      setVerifyError(err.message || 'Product does not exist on the ledger.');
     } finally {
       setVerifyLoading(false);
     }
   };
 
   const openVerifyModal = (prefillId = '') => {
-    setVerifySearchId(prefillId);
+    const clean = (prefillId || '').trim();
+    setVerifySearchId(clean);
     setVerifyResult(null);
     setVerifyError(null);
     setVerifyModalOpen(true);
-    if (prefillId) {
-      // automatically run search if prefilled
+    if (clean) {
+      setVerifyLoading(true);
       setTimeout(() => {
-        productApi.getById(prefillId)
+        productApi.verify(clean)
           .then(res => setVerifyResult(res.data))
-          .catch(err => setVerifyError(err.message));
+          .catch(err => setVerifyError(err.message || 'Product does not exist on the ledger.'))
+          .finally(() => setVerifyLoading(false));
       }, 100);
     }
   };
@@ -193,15 +202,6 @@ export default function ManufacturerDashboard() {
             <span>Ledger Status: {isLedgerOnline ? 'Online' : 'Offline'}</span>
           </div>
 
-          <label className="toggle-label" title="Automatically poll ledger for state updates">
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-            />
-            <span className="toggle-text">Live Sync</span>
-          </label>
-
           <button
             className="btn btn-secondary btn-sm"
             onClick={() => fetchDashboardData(true)}
@@ -244,7 +244,7 @@ export default function ManufacturerDashboard() {
           onClick={() => navigate('/products')}
         >
           <Boxes size={20} color="var(--primary)" />
-          <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>View Manufactured Products</span>
+          <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>View Products</span>
         </button>
 
         <button
@@ -442,28 +442,84 @@ export default function ManufacturerDashboard() {
               </div>
             ) : (
               <div className="activity-stream">
-                {activities.map((act) => (
-                  <div className="activity-item" key={act.id}>
-                    <div className="activity-icon-col">
-                      <div className="activity-bullet"></div>
-                      <div className="activity-line"></div>
+                {activities.map((act) => {
+                  const isExpanded = !!expandedActivities[act.id];
+                  const readableAction =
+                    act.type === 'REGISTER_PRODUCT'
+                      ? 'Product registered successfully'
+                      : act.type === 'TRANSFER_OWNERSHIP'
+                      ? 'Custody transferred successfully'
+                      : 'Transaction committed to ledger';
+
+                  return (
+                    <div className="activity-item" key={act.id}>
+                      <div className="activity-icon-col">
+                        <div className="activity-bullet"></div>
+                        <div className="activity-line"></div>
+                      </div>
+                      <div className="activity-body">
+                        <div className="activity-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <strong style={{ fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                            Product {act.productId}
+                          </strong>
+                          <span className="activity-time" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            {getRelativeTime(act.timestamp)}
+                          </span>
+                        </div>
+                        {act.productName && (
+                          <div style={{ fontSize: '0.82rem', fontWeight: 500, color: 'var(--primary)', marginTop: '2px' }}>
+                            {act.productName}
+                          </div>
+                        )}
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                          {readableAction}
+                        </div>
+
+                        <div style={{ marginTop: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => toggleActivityDetails(act.id)}
+                            style={{
+                              fontSize: '0.73rem',
+                              color: 'var(--primary)',
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              cursor: 'pointer',
+                              fontWeight: 500,
+                            }}
+                          >
+                            {isExpanded ? '− Technical Details' : '+ Technical Details'}
+                          </button>
+                          {isExpanded && (
+                            <div
+                              style={{
+                                marginTop: '6px',
+                                padding: '8px 10px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '6px',
+                                fontSize: '0.75rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '3px',
+                              }}
+                            >
+                              <div><span style={{ color: '#64748b' }}>Action:</span> <strong style={{ fontFamily: 'monospace' }}>{act.type}</strong></div>
+                              <div><span style={{ color: '#64748b' }}>Actor:</span> <code>{act.actor}</code></div>
+                              <div><span style={{ color: '#64748b' }}>Ledger Status:</span> <span style={{ color: '#059669', fontWeight: 600 }}>{act.status}</span></div>
+                              {act.id && (
+                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  <span style={{ color: '#64748b' }}>Tx ID:</span> <span style={{ fontFamily: 'monospace', fontSize: '0.7rem' }}>{act.id}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="activity-body">
-                      <div className="activity-header">
-                        <span className="activity-type">{act.type}</span>
-                        <span className="activity-time">{getRelativeTime(act.timestamp)}</span>
-                      </div>
-                      <div className="activity-detail">
-                        Product <strong className="activity-id">{act.productId}</strong>
-                        {act.productName ? ` (${act.productName})` : ''}
-                      </div>
-                      <div className="activity-meta">
-                        <span className="activity-actor">Actor: {act.actor}</span>
-                        <span className="activity-status-tag">{act.status}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -500,7 +556,7 @@ export default function ManufacturerDashboard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <ShieldCheck size={22} color="var(--primary)" />
-                <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a' }}>Ledger Product Verification</h3>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a' }}>Verify Product</h3>
               </div>
               <button
                 type="button"
@@ -513,7 +569,7 @@ export default function ManufacturerDashboard() {
             </div>
 
             <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 16px' }}>
-              Query the real world state on the distributed ledger to verify origin authenticity, custody, and batch status.
+              Enter a Product ID to verify its registration, manufacturer, current custodian, and status.
             </p>
 
             <form onSubmit={handleVerifySearch} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
@@ -551,43 +607,161 @@ export default function ManufacturerDashboard() {
 
             {verifyResult && (
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
-                    {verifyResult.productName}
-                  </span>
-                  <StatusBadge status={verifyResult.status} isGenesis={verifyResult.productId === 'P000'} />
-                </div>
+                {verifyResult.status === 'AUTHENTIC' ? (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '4px 10px',
+                          borderRadius: '16px',
+                          fontSize: '0.85rem',
+                          fontWeight: 700,
+                          background: 'rgba(16, 185, 129, 0.1)',
+                          color: '#059669',
+                          border: '1px solid rgba(16, 185, 129, 0.25)',
+                        }}
+                      >
+                        <CheckCircle2 size={16} />
+                        <span>✓ Authentic Product</span>
+                      </span>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a' }}>
+                        {verifyResult.productName}
+                      </span>
+                    </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.82rem' }}>
-                  <div>
-                    <span style={{ color: '#64748b', display: 'block' }}>Product ID</span>
-                    <strong style={{ fontFamily: 'monospace', color: '#0f172a' }}>{verifyResult.productId}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: '#64748b', display: 'block' }}>Batch Number</span>
-                    <strong style={{ fontFamily: 'monospace', color: '#0f172a' }}>{verifyResult.batchNumber}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: '#64748b', display: 'block' }}>Manufacturer</span>
-                    <strong style={{ color: '#0f172a' }}>{verifyResult.manufacturer}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: '#64748b', display: 'block' }}>Current Custodian</span>
-                    <strong style={{ color: '#2563eb' }}>{verifyResult.currentOwner}</strong>
-                  </div>
-                </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.83rem' }}>
+                      <div>
+                        <span style={{ color: '#64748b', display: 'block' }}>Product ID</span>
+                        <strong style={{ fontFamily: 'monospace', color: '#0f172a' }}>{verifyResult.productId}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', display: 'block' }}>Manufacturer</span>
+                        <strong style={{ color: '#0f172a' }}>{verifyResult.manufacturer}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', display: 'block' }}>Current Custodian</span>
+                        <strong style={{ color: '#2563eb' }}>{verifyResult.currentOwner}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', display: 'block' }}>Data Integrity</span>
+                        <strong style={{ color: '#059669' }}>Verified</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', display: 'block' }}>Digital Signature</span>
+                        <strong style={{ color: '#059669' }}>Valid</strong>
+                      </div>
+                    </div>
 
-                <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => {
-                      setVerifyModalOpen(false);
-                      navigate(`/products/${verifyResult.productId}`);
-                    }}
-                  >
-                    View Full Provenance &rarr;
-                  </button>
-                </div>
+                    <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => {
+                          setVerifyModalOpen(false);
+                          navigate(`/products/${verifyResult.productId}`);
+                        }}
+                      >
+                        View Full Provenance &rarr;
+                      </button>
+                    </div>
+                  </>
+                ) : verifyResult.status === 'LEGACY' ? (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '4px 10px',
+                          borderRadius: '16px',
+                          fontSize: '0.85rem',
+                          fontWeight: 700,
+                          background: 'rgba(100, 116, 139, 0.1)',
+                          color: '#475569',
+                          border: '1px solid rgba(100, 116, 139, 0.25)',
+                        }}
+                      >
+                        <Info size={16} />
+                        <span>Legacy Record</span>
+                      </span>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a' }}>
+                        {verifyResult.productName}
+                      </span>
+                    </div>
+
+                    <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: '#64748b' }}>
+                      Cryptographic verification data not available for this legacy record.
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.83rem' }}>
+                      <div>
+                        <span style={{ color: '#64748b', display: 'block' }}>Product ID</span>
+                        <strong style={{ fontFamily: 'monospace', color: '#0f172a' }}>{verifyResult.productId}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', display: 'block' }}>Manufacturer</span>
+                        <strong style={{ color: '#0f172a' }}>{verifyResult.manufacturer}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', display: 'block' }}>Current Custodian</span>
+                        <strong style={{ color: '#2563eb' }}>{verifyResult.currentOwner}</strong>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => {
+                          setVerifyModalOpen(false);
+                          navigate(`/products/${verifyResult.productId}`);
+                        }}
+                      >
+                        View Product Details &rarr;
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '4px 10px',
+                          borderRadius: '16px',
+                          fontSize: '0.85rem',
+                          fontWeight: 700,
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          color: '#dc2626',
+                          border: '1px solid rgba(239, 68, 68, 0.25)',
+                        }}
+                      >
+                        <ShieldAlert size={16} />
+                        <span>✕ Verification Failed</span>
+                      </span>
+                    </div>
+
+                    <p style={{ margin: '0 0 12px', fontSize: '0.84rem', color: '#dc2626' }}>
+                      {verifyResult.status === 'NOT_FOUND'
+                        ? 'Product does not exist on the distributed ledger.'
+                        : verifyResult.status === 'DATA_TAMPERED'
+                        ? 'Data integrity failed: Recalculated SHA-256 digest does not match the ledger record.'
+                        : verifyResult.status === 'SIGNATURE_INVALID'
+                        ? 'Digital signature failed: Signature does not match the authorized Manufacturer identity.'
+                        : verifyResult.message || 'Verification could not be confirmed.'}
+                    </p>
+
+                    {verifyResult.productId && (
+                      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                        Product ID: <strong>{verifyResult.productId}</strong>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>

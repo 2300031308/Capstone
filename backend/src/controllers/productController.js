@@ -6,6 +6,7 @@
 'use strict';
 
 const fabricService = require('../services/fabricService');
+const cryptoService = require('../services/cryptoService');
 const { logTransactionActivity } = require('./networkController');
 
 /**
@@ -31,11 +32,11 @@ async function registerProduct(req, res, next) {
         // 2. Pre-check if product already exists on the ledger to prevent raw Fabric transaction rejection stack traces
         try {
             const existsResult = await fabricService.evaluateTransaction('productExists', cleanId);
-            const exists = typeof existsResult === 'string' ? existsResult.toLowerCase() === 'true' : Boolean(existsResult);
+            const exists = existsResult === true || existsResult === 'true' || (typeof existsResult === 'string' && existsResult.toLowerCase() === 'true');
             if (exists) {
                 return res.status(409).json({
                     success: false,
-                    error: `Product ID "${cleanId}" is already registered on the ledger. Product IDs must be globally unique.`,
+                    error: 'Product ID already exists on the ledger. Please use a different Product ID.',
                 });
             }
         } catch (evalErr) {
@@ -46,12 +47,24 @@ async function registerProduct(req, res, next) {
         // 3. Server-side derivation: manufacturer identity is derived from authenticated user's organization
         const manufacturer = req.user?.organization || 'ManufacturerOrg';
 
+        // 4. Deterministic Canonical Data, SHA-256 Hash, and ECDSA Digital Signature
+        const canonicalData = cryptoService.getCanonicalString({
+            productId: cleanId,
+            productName: cleanName,
+            batchNumber: cleanBatch,
+            manufacturer,
+        });
+        const productHash = cryptoService.generateProductHash(canonicalData);
+        const digitalSignature = cryptoService.signProduct(canonicalData);
+
         const result = await fabricService.submitTransaction(
             'registerProduct',
             cleanId,
             cleanName,
             cleanBatch,
-            manufacturer
+            manufacturer,
+            productHash,
+            digitalSignature
         );
 
         // Record confirmed blockchain transaction in real-time activity stream
@@ -72,7 +85,17 @@ async function registerProduct(req, res, next) {
             data: result,
         });
     } catch (error) {
-        next(error);
+        console.error(`[registerProduct] Error committing transaction for "${req.body?.productId}":`, error.message);
+        if (error.message && (error.message.includes('already exists') || error.message.includes('already registered'))) {
+            return res.status(409).json({
+                success: false,
+                error: 'Product ID already exists on the ledger. Please use a different Product ID.',
+            });
+        }
+        return res.status(500).json({
+            success: false,
+            error: 'Unable to commit the transaction. Please try again.',
+        });
     }
 }
 
@@ -226,10 +249,68 @@ async function getProductHistory(req, res, next) {
     }
 }
 
+/**
+ * Verify product authenticity cryptographically.
+ * GET /api/products/:productId/verify
+ */
+async function verifyProduct(req, res, next) {
+    try {
+        const { productId } = req.params;
+        const cleanId = (productId || '').trim();
+        if (!cleanId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Product ID is required for verification.',
+            });
+        }
+
+        let rawProduct;
+        try {
+            rawProduct = await fabricService.evaluateTransaction('getProduct', cleanId);
+        } catch (evalErr) {
+            return res.status(404).json({
+                success: false,
+                data: {
+                    status: 'NOT_FOUND',
+                    authentic: false,
+                    productId: cleanId,
+                    message: `Product "${cleanId}" does not exist on the ledger.`,
+                },
+            });
+        }
+
+        const product = typeof rawProduct === 'string' ? JSON.parse(rawProduct) : rawProduct;
+        if (!product || !product.productId) {
+            return res.status(404).json({
+                success: false,
+                data: {
+                    status: 'NOT_FOUND',
+                    authentic: false,
+                    productId: cleanId,
+                    message: `Product "${cleanId}" was not found in world state.`,
+                },
+            });
+        }
+
+        const verification = cryptoService.verifyProductAuthenticity(product);
+        return res.json({
+            success: true,
+            data: verification,
+        });
+    } catch (error) {
+        console.error('[verifyProduct] Verification error:', error.message);
+        return res.status(500).json({
+            success: false,
+            error: 'Unable to complete product verification. Please try again.',
+        });
+    }
+}
+
 module.exports = {
     registerProduct,
     getProduct,
     getAllProducts,
     transferOwnership,
     getProductHistory,
+    verifyProduct,
 };

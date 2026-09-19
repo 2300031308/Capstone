@@ -52,6 +52,7 @@ export const productApi = {
   register: (productData) => api.post('/products', productData),
   getAll: () => api.get('/products'),
   getById: (productId) => api.get(`/products/${productId}`),
+  verify: (productId) => api.get(`/products/${productId}/verify`),
   transfer: (productId, transferData) => api.post(`/products/${productId}/transfer`, transferData),
   getHistory: (productId) => api.get(`/products/${productId}/history`),
 };
