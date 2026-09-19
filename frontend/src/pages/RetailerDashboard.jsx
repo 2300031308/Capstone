@@ -52,10 +52,9 @@ export default function RetailerDashboard() {
 
   // Retail inventory calculations
   const retailInventory = products.filter(
-    p => p.currentOwner && (p.currentOwner.toLowerCase().includes('retail') || p.currentOwner === user?.organization)
+    p => p.currentOwner === user?.organization && p.status === 'DELIVERED_TO_RETAILER'
   );
-  const verifiedAssets = products.length;
-  const inStockCount = retailInventory.length > 0 ? retailInventory.length : products.length;
+  const soldCount = products.filter(p => p.status === 'SOLD_TO_CONSUMER').length;
 
   return (
     <div className="dashboard-view">
@@ -66,7 +65,7 @@ export default function RetailerDashboard() {
             <h2 className="dashboard-title">Retail Store Operations Console</h2>
           </div>
           <p className="dashboard-subtitle">
-            Authenticated Entity: <strong>{user?.name}</strong> &bull; Organization: <code>{user?.organization}</code> &bull; MSP: <code>{user?.mspId || 'RetailerMSP'}</code>
+            Authenticated Entity: <strong>{user?.name}</strong> &bull; Organization: <code>{user?.organization}</code> &bull; MSP: <code>{user?.mspId || 'Org2MSP'}</code>
           </p>
         </div>
 
@@ -81,10 +80,10 @@ export default function RetailerDashboard() {
           </button>
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => navigate('/verify')}
+            onClick={() => navigate('/transfer')}
           >
-            <ShieldCheck size={15} />
-            <span>Verify Inbound Stock</span>
+            <ShoppingBag size={14} />
+            <span>Point-of-Sale / Transfer</span>
           </button>
         </div>
       </div>
@@ -106,10 +105,10 @@ export default function RetailerDashboard() {
         <div className="stat-card modern-card">
           <div className="stat-card-header">
             <span className="stat-label">Store Inventory Units</span>
-            <span className="stat-badge blue">RetailerMSP</span>
+            <span className="stat-badge blue">In Stock</span>
           </div>
           <div className="stat-value-wrap">
-            <div className="stat-number">{inStockCount}</div>
+            <div className="stat-number">{retailInventory.length}</div>
             <Store size={28} className="stat-icon-svg" />
           </div>
           <div className="stat-footer">
@@ -119,29 +118,29 @@ export default function RetailerDashboard() {
 
         <div className="stat-card modern-card">
           <div className="stat-card-header">
-            <span className="stat-label">Verified Ledger Assets</span>
-            <span className="stat-badge green">CouchDB State</span>
+            <span className="stat-label">Sold to Consumers</span>
+            <span className="stat-badge green">Terminal Sale</span>
           </div>
           <div className="stat-value-wrap">
-            <div className="stat-number">{verifiedAssets}</div>
-            <CheckCircle2 size={28} className="stat-icon-svg success" />
+            <div className="stat-number">{soldCount}</div>
+            <ShoppingBag size={28} className="stat-icon-svg success" />
           </div>
           <div className="stat-footer">
-            <span className="stat-subtext">Cryptographically authenticated</span>
+            <span className="stat-subtext">Completed consumer sales</span>
           </div>
         </div>
 
         <div className="stat-card modern-card">
           <div className="stat-card-header">
-            <span className="stat-label">Point-of-Sale Readiness</span>
-            <span className="stat-badge amber">Ready for Sale</span>
+            <span className="stat-label">Total Verified Ledger Items</span>
+            <span className="stat-badge amber">Network Wide</span>
           </div>
           <div className="stat-value-wrap">
-            <div className="stat-number">{products.filter(p => p.status === 'REGISTERED').length}</div>
-            <ShoppingBag size={28} className="stat-icon-svg" />
+            <div className="stat-number">{products.length}</div>
+            <CheckCircle2 size={28} className="stat-icon-svg" />
           </div>
           <div className="stat-footer">
-            <span className="stat-subtext">Eligible for consumer transfer</span>
+            <span className="stat-subtext">Cryptographically authenticated</span>
           </div>
         </div>
 
@@ -225,7 +224,17 @@ export default function RetailerDashboard() {
                       <td>
                         <StatusBadge status={product.status} />
                       </td>
-                      <td style={{ textAlign: 'right' }}>
+                      <td style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '6px', alignItems: 'center' }}>
+                        {product.currentOwner === user?.organization && product.status === 'DELIVERED_TO_RETAILER' && (
+                          <button
+                            className="btn btn-primary btn-xs"
+                            onClick={() => navigate(`/transfer?productId=${product.productId}`)}
+                            title="Sell to Consumer"
+                          >
+                            <ShoppingBag size={12} style={{ marginRight: '4px' }} />
+                            Sell
+                          </button>
+                        )}
                         <button
                           className="btn btn-ghost btn-xs"
                           onClick={() => navigate(`/products/${product.productId}`)}

@@ -216,25 +216,68 @@ export default function CustomerDashboard() {
             <h4 style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
               Fabric Provenance Chain of Custody
             </h4>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <div style={{ padding: '8px 14px', background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.85rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  border: '1px solid',
+                  borderColor: searchResult.status === 'REGISTERED' ? 'var(--primary)' : 'var(--border)',
+                  background: searchResult.status === 'REGISTERED' ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-main)',
+                  fontSize: '0.85rem',
+                }}
+              >
                 <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>ORIGIN (Org1MSP)</span>
                 <strong>{searchResult.manufacturer}</strong>
               </div>
+
               <ArrowRight size={14} color="var(--text-muted)" />
-              <div style={{ padding: '8px 14px', background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.85rem' }}>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>DISTRIBUTION</span>
+
+              <div
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  border: '1px solid',
+                  borderColor: searchResult.status === 'IN_TRANSIT_TO_DISTRIBUTOR' ? 'var(--primary)' : 'var(--border)',
+                  background: searchResult.status === 'IN_TRANSIT_TO_DISTRIBUTOR' ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-main)',
+                  fontSize: '0.85rem',
+                }}
+              >
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>DISTRIBUTION (Org2MSP)</span>
                 <strong>Logistics Network</strong>
               </div>
+
               <ArrowRight size={14} color="var(--text-muted)" />
-              <div style={{ padding: '8px 14px', background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.85rem' }}>
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>RETAIL POINT</span>
+
+              <div
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  border: '1px solid',
+                  borderColor: searchResult.status === 'DELIVERED_TO_RETAILER' ? 'var(--primary)' : 'var(--border)',
+                  background: searchResult.status === 'DELIVERED_TO_RETAILER' ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-main)',
+                  fontSize: '0.85rem',
+                }}
+              >
+                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>RETAIL POINT (Org2MSP)</span>
                 <strong>Authorized Partner</strong>
               </div>
+
               <ArrowRight size={14} color="var(--text-muted)" />
-              <div style={{ padding: '8px 14px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '6px', fontSize: '0.85rem', color: 'var(--success)' }}>
-                <span style={{ display: 'block', fontSize: '0.72rem' }}>END VERIFICATION</span>
-                <strong>Consumer Validated</strong>
+
+              <div
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  border: '1px solid',
+                  borderColor: searchResult.status === 'SOLD_TO_CONSUMER' ? 'var(--success)' : 'var(--border)',
+                  background: searchResult.status === 'SOLD_TO_CONSUMER' ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-main)',
+                  fontSize: '0.85rem',
+                  color: searchResult.status === 'SOLD_TO_CONSUMER' ? 'var(--success)' : 'inherit',
+                }}
+              >
+                <span style={{ display: 'block', fontSize: '0.72rem' }}>CONSUMER STATE</span>
+                <strong>{searchResult.status === 'SOLD_TO_CONSUMER' ? 'Consumer Validated' : 'Pending Sale'}</strong>
               </div>
             </div>
           </div>

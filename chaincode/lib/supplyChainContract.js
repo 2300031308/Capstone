@@ -165,27 +165,91 @@ class SupplyChainContract extends Contract {
     // ===== STUBS FOR FUTURE OBJECTIVES =====
 
     /**
-     * Transfer product ownership (O4).
+     * Transfer product ownership across the supply chain (O4).
+     * State machine transitions:
+     * 1. REGISTERED (ManufacturerOrg, Org1MSP) -> IN_TRANSIT_TO_DISTRIBUTOR (DistributorOrg)
+     * 2. IN_TRANSIT_TO_DISTRIBUTOR (DistributorOrg, Org2MSP) -> DELIVERED_TO_RETAILER (RetailerOrg)
+     * 3. DELIVERED_TO_RETAILER (RetailerOrg, Org2MSP) -> SOLD_TO_CONSUMER (Consumer)
+     * 4. SOLD_TO_CONSUMER -> Terminal state, no further transfer allowed.
      */
     async transferOwnership(ctx, productId, newOwner, newStatus) {
+        if (!productId) {
+            throw new Error('Product ID is required for ownership transfer');
+        }
+
         const productJSON = await ctx.stub.getState(productId);
         if (!productJSON || productJSON.length === 0) {
             throw new Error(`Product ${productId} does not exist`);
         }
 
         const product = JSON.parse(productJSON.toString());
-        const previousOwner = product.currentOwner;
+        const callerMsp = ctx.clientIdentity.getMSPID();
+        const currentStatus = product.status;
+        const currentOwner = product.currentOwner;
 
-        product.currentOwner = newOwner;
-        product.status = newStatus || 'TRANSFERRED';
-        product.updatedAt = this._getTxTimestamp(ctx);
+        let expectedOwner;
+        let expectedStatus;
+
+        if (currentStatus === 'REGISTERED') {
+            if (currentOwner !== 'ManufacturerOrg') {
+                throw new Error(`Invalid custodian: Product ${productId} with status 'REGISTERED' must be owned by 'ManufacturerOrg', found '${currentOwner}'`);
+            }
+            if (callerMsp !== 'Org1MSP') {
+                throw new Error(`Unauthorized MSP: Caller MSP '${callerMsp}' cannot transfer product from 'REGISTERED' status. Expected 'Org1MSP'.`);
+            }
+            expectedOwner = 'DistributorOrg';
+            expectedStatus = 'IN_TRANSIT_TO_DISTRIBUTOR';
+        } else if (currentStatus === 'IN_TRANSIT_TO_DISTRIBUTOR') {
+            if (currentOwner !== 'DistributorOrg') {
+                throw new Error(`Invalid custodian: Product ${productId} with status 'IN_TRANSIT_TO_DISTRIBUTOR' must be owned by 'DistributorOrg', found '${currentOwner}'`);
+            }
+            if (callerMsp !== 'Org2MSP') {
+                throw new Error(`Unauthorized MSP: Caller MSP '${callerMsp}' cannot transfer product from 'IN_TRANSIT_TO_DISTRIBUTOR' status. Expected 'Org2MSP'.`);
+            }
+            expectedOwner = 'RetailerOrg';
+            expectedStatus = 'DELIVERED_TO_RETAILER';
+        } else if (currentStatus === 'DELIVERED_TO_RETAILER') {
+            if (currentOwner !== 'RetailerOrg') {
+                throw new Error(`Invalid custodian: Product ${productId} with status 'DELIVERED_TO_RETAILER' must be owned by 'RetailerOrg', found '${currentOwner}'`);
+            }
+            if (callerMsp !== 'Org2MSP') {
+                throw new Error(`Unauthorized MSP: Caller MSP '${callerMsp}' cannot transfer product from 'DELIVERED_TO_RETAILER' status. Expected 'Org2MSP'.`);
+            }
+            expectedOwner = 'Consumer';
+            expectedStatus = 'SOLD_TO_CONSUMER';
+        } else if (currentStatus === 'SOLD_TO_CONSUMER') {
+            throw new Error(`Product ${productId} has already been sold to consumer. No further custody transfers permitted.`);
+        } else {
+            throw new Error(`Invalid custody state transition from status: '${currentStatus}'`);
+        }
+
+        // Never blindly trust client-supplied parameters
+        if (newOwner && newOwner !== expectedOwner) {
+            throw new Error(`Invalid target owner: Received '${newOwner}', expected '${expectedOwner}' for transition from '${currentStatus}'`);
+        }
+        if (newStatus && newStatus !== expectedStatus) {
+            throw new Error(`Invalid target status: Received '${newStatus}', expected '${expectedStatus}' for transition from '${currentStatus}'`);
+        }
+
+        const previousOwner = product.currentOwner;
+        const previousStatus = product.status;
+        const txTimestamp = this._getTxTimestamp(ctx);
+
+        // Update strictly mutable fields; immutable origin fields remain intact
+        product.currentOwner = expectedOwner;
+        product.status = expectedStatus;
+        product.updatedAt = txTimestamp;
 
         await ctx.stub.putState(productId, Buffer.from(JSON.stringify(product)));
 
         ctx.stub.setEvent('OwnershipTransferred', Buffer.from(JSON.stringify({
             productId,
             previousOwner,
-            newOwner,
+            newOwner: expectedOwner,
+            previousStatus,
+            status: expectedStatus,
+            callerMsp,
+            timestamp: txTimestamp,
         })));
 
         return JSON.stringify(product);

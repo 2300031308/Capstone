@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { productApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatusBadge from '../components/StatusBadge';
 import ProductQRCode from '../components/ProductQRCode';
@@ -15,11 +16,15 @@ import {
   QrCode,
   ShieldAlert,
   Info,
+  Truck,
+  ArrowRight,
+  Lock,
 } from 'lucide-react';
 
 export default function ProductDetails() {
   const { productId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [verification, setVerification] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -273,6 +278,137 @@ export default function ProductDetails() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Custody Management & Ownership Transfer Card (O4) */}
+      <div className="card modern-card" style={{ marginBottom: '20px' }}>
+        <div className="card-header-bar" style={{ marginBottom: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Truck size={20} color="var(--primary)" />
+            <h3 className="card-title" style={{ margin: 0 }}>Custody Status &amp; Ownership-Based Access Control</h3>
+          </div>
+          <span className="badge badge-default">Objective 4</span>
+        </div>
+
+        {/* Dynamic Action Bar */}
+        {product.status === 'SOLD_TO_CONSUMER' ? (
+          <div className="alert alert-info" style={{ marginBottom: '16px' }}>
+            <Lock size={16} />
+            <div className="alert-content" style={{ fontSize: '0.86rem' }}>
+              <strong>Terminal State:</strong> This product has been sold to an end consumer (<code>Consumer</code>). Further custody transfers are permanently prohibited by smart contract rules.
+            </div>
+          </div>
+        ) : user?.organization === product.currentOwner ? (
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '14px',
+              padding: '14px 16px',
+              background: 'rgba(37, 99, 235, 0.05)',
+              borderRadius: '8px',
+              border: '1px solid rgba(37, 99, 235, 0.2)',
+              marginBottom: '16px',
+            }}
+          >
+            <div>
+              <strong style={{ color: 'var(--primary)', display: 'block', marginBottom: '2px', fontSize: '0.9rem' }}>
+                You hold active custody of this product ({user?.organization})
+              </strong>
+              <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                As verified custodian, you are authorized to transfer this asset along the supply chain.
+              </span>
+            </div>
+            {['manufacturer', 'distributor', 'retailer'].includes((user?.role || '').toLowerCase()) && (
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => navigate(`/transfer?productId=${product.productId}`)}
+              >
+                <Truck size={14} style={{ marginRight: '6px' }} />
+                <span>Transfer Custody &rarr;</span>
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="alert alert-info" style={{ marginBottom: '16px' }}>
+            <Info size={16} />
+            <div className="alert-content" style={{ fontSize: '0.86rem' }}>
+              <strong>Custody Held by {product.currentOwner}:</strong> Your authenticated organization is <code>{user?.organization || 'Unknown'}</code>. Under Fabric ownership-based access control, transfers can only be executed by the current verified custodian.
+            </div>
+          </div>
+        )}
+
+        {/* 4-Step Provenance Timeline */}
+        <div style={{ paddingTop: '8px' }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '10px' }}>
+            Supply Chain Provenance Route
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div
+              style={{
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid',
+                borderColor: product.status === 'REGISTERED' ? 'var(--primary)' : '#e2e8f0',
+                background: product.status === 'REGISTERED' ? 'rgba(37, 99, 235, 0.08)' : '#f8fafc',
+                fontSize: '0.82rem',
+              }}
+            >
+              <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>HOP 1 (Org1MSP)</span>
+              <strong>Manufacturer</strong>
+            </div>
+
+            <ArrowRight size={14} color="#94a3b8" />
+
+            <div
+              style={{
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid',
+                borderColor: product.status === 'IN_TRANSIT_TO_DISTRIBUTOR' ? 'var(--primary)' : '#e2e8f0',
+                background: product.status === 'IN_TRANSIT_TO_DISTRIBUTOR' ? 'rgba(37, 99, 235, 0.08)' : '#f8fafc',
+                fontSize: '0.82rem',
+              }}
+            >
+              <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>HOP 2 (Org2MSP)</span>
+              <strong>Distributor Logistics</strong>
+            </div>
+
+            <ArrowRight size={14} color="#94a3b8" />
+
+            <div
+              style={{
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid',
+                borderColor: product.status === 'DELIVERED_TO_RETAILER' ? 'var(--primary)' : '#e2e8f0',
+                background: product.status === 'DELIVERED_TO_RETAILER' ? 'rgba(37, 99, 235, 0.08)' : '#f8fafc',
+                fontSize: '0.82rem',
+              }}
+            >
+              <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>HOP 3 (Org2MSP)</span>
+              <strong>Retail Store</strong>
+            </div>
+
+            <ArrowRight size={14} color="#94a3b8" />
+
+            <div
+              style={{
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid',
+                borderColor: product.status === 'SOLD_TO_CONSUMER' ? 'var(--success)' : '#e2e8f0',
+                background: product.status === 'SOLD_TO_CONSUMER' ? 'rgba(16, 185, 129, 0.08)' : '#f8fafc',
+                fontSize: '0.82rem',
+              }}
+            >
+              <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>TERMINAL</span>
+              <strong>Consumer Handover</strong>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Primary Asset Specification Card */}

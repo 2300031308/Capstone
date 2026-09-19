@@ -7,7 +7,9 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node test/verifyAuthenticityTest.js",
-    "test:ledger": "node test/ledgerVerificationTest.js"
+    "test:ledger": "node test/ledgerVerificationTest.js",
+    "test:custody": "node test/ownershipTransferTest.js",
+    "test:api": "node test/transferHttpApiTest.js"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.12.5",

@@ -25,6 +25,7 @@ export default function Sidebar() {
               { path: '/manufacturer/dashboard', icon: LayoutDashboard, label: 'Overview' },
               { path: '/register-product', icon: PackagePlus, label: 'Register Product' },
               { path: '/products', icon: Boxes, label: 'Products' },
+              { path: '/transfer', icon: Truck, label: 'Transfer Custody' },
             ],
           },
           {
@@ -43,7 +44,7 @@ export default function Sidebar() {
             items: [
               { path: '/distributor/dashboard', icon: LayoutDashboard, label: 'Logistics Overview' },
               { path: '/products', icon: Boxes, label: 'Custody Inventory' },
-              { path: '/transfer', icon: Truck, label: 'Transfer Custody', tag: 'O4' },
+              { path: '/transfer', icon: Truck, label: 'Transfer Custody' },
             ],
           },
           {
@@ -62,7 +63,7 @@ export default function Sidebar() {
             items: [
               { path: '/retailer/dashboard', icon: LayoutDashboard, label: 'Store Overview' },
               { path: '/products', icon: Boxes, label: 'Retail Stock' },
-              { path: '/transfer', icon: Truck, label: 'Point-of-Sale / Transfer', tag: 'O4' },
+              { path: '/transfer', icon: Truck, label: 'Point-of-Sale / Transfer' },
             ],
           },
           {

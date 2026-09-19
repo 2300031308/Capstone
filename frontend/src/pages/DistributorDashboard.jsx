@@ -52,9 +52,11 @@ export default function DistributorDashboard() {
 
   // Filter products relevant to logistics
   const inCustody = products.filter(
-    p => p.currentOwner && p.currentOwner.toLowerCase().includes('distributor')
+    p => p.currentOwner === user?.organization && p.status === 'IN_TRANSIT_TO_DISTRIBUTOR'
   );
-  const availableToTransfer = products.filter(p => p.status === 'REGISTERED');
+  const dispatchedToRetail = products.filter(
+    p => p.status === 'DELIVERED_TO_RETAILER' || p.status === 'SOLD_TO_CONSUMER'
+  );
 
   return (
     <div className="dashboard-view">
@@ -112,15 +114,15 @@ export default function DistributorDashboard() {
 
         <div className="stat-card modern-card">
           <div className="stat-card-header">
-            <span className="stat-label">Available for Custody Transfer</span>
-            <span className="stat-badge amber">Supply Chain Intake</span>
+            <span className="stat-label">Dispatched to Retail</span>
+            <span className="stat-badge amber">Retail Forwarded</span>
           </div>
           <div className="stat-value-wrap">
-            <div className="stat-number">{availableToTransfer.length}</div>
+            <div className="stat-number">{dispatchedToRetail.length}</div>
             <Truck size={28} className="stat-icon-svg" />
           </div>
           <div className="stat-footer">
-            <span className="stat-subtext">Registered assets eligible for logistics</span>
+            <span className="stat-subtext">Delivered to retail or sold to consumer</span>
           </div>
         </div>
 
@@ -201,7 +203,17 @@ export default function DistributorDashboard() {
                         <td>{product.manufacturer}</td>
                         <td><span className="owner-badge">{product.currentOwner}</span></td>
                         <td><StatusBadge status={product.status} /></td>
-                        <td>
+                        <td style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          {product.currentOwner === user?.organization && product.status === 'IN_TRANSIT_TO_DISTRIBUTOR' && (
+                            <button
+                              className="btn btn-primary btn-xs"
+                              onClick={() => navigate(`/transfer?productId=${product.productId}`)}
+                              title="Transfer to RetailerOrg"
+                            >
+                              <Truck size={12} style={{ marginRight: '4px' }} />
+                              Transfer
+                            </button>
+                          )}
                           <button
                             className="btn btn-action-view"
                             onClick={() => navigate(`/products/${product.productId}`)}

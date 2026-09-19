@@ -14,6 +14,7 @@ import CustomerDashboard from './pages/CustomerDashboard';
 import RegisterProduct from './pages/RegisterProduct';
 import ProductList from './pages/ProductList';
 import ProductDetails from './pages/ProductDetails';
+import TransferCustody from './pages/TransferCustody';
 import { ShieldCheck } from 'lucide-react';
 
 export default function App() {
@@ -146,12 +147,8 @@ function AppRoutes() {
                     <Route
                       path="transfer"
                       element={
-                        <ProtectedRoute allowedRoles={['distributor', 'retailer']}>
-                          <PlaceholderPage
-                            title="Custody Transfer & Ownership Routing"
-                            desc="Custody transfer on Hyperledger Fabric will be enabled in Objective 4."
-                            targetObj="O4"
-                          />
+                        <ProtectedRoute allowedRoles={['manufacturer', 'distributor', 'retailer']}>
+                          <TransferCustody />
                         </ProtectedRoute>
                       }
                     />

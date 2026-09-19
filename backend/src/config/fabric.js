@@ -43,6 +43,26 @@ const fabricConfig = {
         CRYPTO_PATH,
         'users', 'User1@org1.example.com', 'msp', 'keystore'
     ),
+
+    // Multi-MSP configurations for Org1MSP (Manufacturer) and Org2MSP (Distributor & Retailer)
+    orgs: {
+        Org1MSP: {
+            mspId: 'Org1MSP',
+            peerEndpoint: 'localhost:7051',
+            peerHostAlias: 'peer0.org1.example.com',
+            tlsCertPath: path.join(TEST_NETWORK_DIR, 'organizations', 'peerOrganizations', 'org1.example.com', 'peers', 'peer0.org1.example.com', 'tls', 'ca.crt'),
+            certDirectoryPath: path.join(TEST_NETWORK_DIR, 'organizations', 'peerOrganizations', 'org1.example.com', 'users', 'User1@org1.example.com', 'msp', 'signcerts'),
+            keyDirectoryPath: path.join(TEST_NETWORK_DIR, 'organizations', 'peerOrganizations', 'org1.example.com', 'users', 'User1@org1.example.com', 'msp', 'keystore'),
+        },
+        Org2MSP: {
+            mspId: 'Org2MSP',
+            peerEndpoint: 'localhost:9051',
+            peerHostAlias: 'peer0.org2.example.com',
+            tlsCertPath: path.join(TEST_NETWORK_DIR, 'organizations', 'peerOrganizations', 'org2.example.com', 'peers', 'peer0.org2.example.com', 'tls', 'ca.crt'),
+            certDirectoryPath: path.join(TEST_NETWORK_DIR, 'organizations', 'peerOrganizations', 'org2.example.com', 'users', 'User1@org2.example.com', 'msp', 'signcerts'),
+            keyDirectoryPath: path.join(TEST_NETWORK_DIR, 'organizations', 'peerOrganizations', 'org2.example.com', 'users', 'User1@org2.example.com', 'msp', 'keystore'),
+        },
+    },
 };
 
 module.exports = fabricConfig;

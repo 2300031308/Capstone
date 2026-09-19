@@ -13,8 +13,8 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const fabricConfig = require('../config/fabric');
 
-let gateway;
-let contract;
+const gateways = new Map();
+const contracts = new Map();
 
 /**
  * Read the first file from a directory.
@@ -29,54 +29,76 @@ async function readFirstFile(dirPath) {
 }
 
 /**
- * Create a new gRPC connection to the Fabric peer.
+ * Resolve organization configuration.
  */
-async function newGrpcConnection() {
-    const tlsRootCert = await fs.readFile(fabricConfig.tlsCertPath);
+function getOrgConfig(mspId = 'Org1MSP') {
+    if (fabricConfig.orgs && fabricConfig.orgs[mspId]) {
+        return fabricConfig.orgs[mspId];
+    }
+    return {
+        mspId: fabricConfig.mspId,
+        peerEndpoint: fabricConfig.peerEndpoint,
+        peerHostAlias: fabricConfig.peerHostAlias,
+        tlsCertPath: fabricConfig.tlsCertPath,
+        certDirectoryPath: fabricConfig.certDirectoryPath,
+        keyDirectoryPath: fabricConfig.keyDirectoryPath,
+    };
+}
+
+/**
+ * Create a new gRPC connection to the Fabric peer for a specific MSP.
+ */
+async function newGrpcConnection(orgConfig) {
+    const tlsRootCert = await fs.readFile(orgConfig.tlsCertPath);
     const tlsCredentials = grpc.credentials.createSsl(tlsRootCert);
     return new grpc.Client(
-        fabricConfig.peerEndpoint,
+        orgConfig.peerEndpoint,
         tlsCredentials,
         {
-            'grpc.ssl_target_name_override': fabricConfig.peerHostAlias,
+            'grpc.ssl_target_name_override': orgConfig.peerHostAlias,
         }
     );
 }
 
 /**
- * Load the user identity (X.509 certificate).
+ * Load the user identity (X.509 certificate) for a specific MSP.
  */
-async function newIdentity() {
-    const certBuffer = await readFirstFile(fabricConfig.certDirectoryPath);
+async function newIdentity(orgConfig) {
+    const certBuffer = await readFirstFile(orgConfig.certDirectoryPath);
     const credentials = certBuffer.toString();
-    return { mspId: fabricConfig.mspId, credentials: Buffer.from(credentials) };
+    return { mspId: orgConfig.mspId, credentials: Buffer.from(credentials) };
 }
 
 /**
- * Load the user's private key for signing.
+ * Load the user's private key for signing for a specific MSP.
  */
-async function newSigner() {
-    const keyBuffer = await readFirstFile(fabricConfig.keyDirectoryPath);
+async function newSigner(orgConfig) {
+    const keyBuffer = await readFirstFile(orgConfig.keyDirectoryPath);
     const privateKey = crypto.createPrivateKey(keyBuffer);
     return signers.newPrivateKeySigner(privateKey);
 }
 
 /**
- * Initialize the Fabric Gateway connection.
+ * Initialize a Fabric Gateway connection for a specific MSP.
  */
-async function connectToFabric() {
+async function connectToFabric(mspId = 'Org1MSP') {
     try {
-        console.log('Connecting to Fabric network...');
+        if (contracts.has(mspId)) {
+            return contracts.get(mspId);
+        }
+
+        const orgConfig = getOrgConfig(mspId);
+        console.log(`Connecting to Fabric network for ${mspId}...`);
         console.log(`  Channel: ${fabricConfig.channelName}`);
         console.log(`  Chaincode: ${fabricConfig.chaincodeName}`);
-        console.log(`  MSP: ${fabricConfig.mspId}`);
-        console.log(`  Peer: ${fabricConfig.peerEndpoint}`);
+        console.log(`  MSP: ${orgConfig.mspId}`);
+        console.log(`  Peer: ${orgConfig.peerEndpoint} (${orgConfig.peerHostAlias})`);
 
-        const client = await newGrpcConnection();
-        const identity = await newIdentity();
-        const signer = await newSigner();
+        const client = await newGrpcConnection(orgConfig);
+        const identity = await newIdentity(orgConfig);
+        const signer = await newSigner(orgConfig);
 
-        gateway = connect({
+        const gateway = connect({
             client,
             identity,
             signer,
@@ -87,32 +109,36 @@ async function connectToFabric() {
         });
 
         const network = gateway.getNetwork(fabricConfig.channelName);
-        contract = network.getContract(fabricConfig.chaincodeName);
+        const contract = network.getContract(fabricConfig.chaincodeName);
 
-        console.log('Successfully connected to Fabric network!');
+        gateways.set(mspId, gateway);
+        contracts.set(mspId, contract);
+
+        console.log(`Successfully connected to Fabric network as ${mspId}!`);
         return contract;
     } catch (error) {
-        console.error('Failed to connect to Fabric network:', error);
+        console.error(`Failed to connect to Fabric network as ${mspId}:`, error);
         throw error;
     }
 }
 
 /**
- * Get the contract instance, connecting if necessary.
+ * Get the contract instance for a given MSP, connecting if necessary.
  */
-async function getContract() {
-    if (!contract) {
-        await connectToFabric();
+async function getContract(mspId = 'Org1MSP') {
+    if (!contracts.has(mspId)) {
+        await connectToFabric(mspId);
     }
-    return contract;
+    return contracts.get(mspId);
 }
 
 /**
- * Submit a transaction (write to ledger).
+ * Submit a transaction as a specific MSP identity (write to ledger).
  */
-async function submitTransaction(functionName, ...args) {
-    const c = await getContract();
-    console.log(`Submitting transaction: ${functionName}(${args.join(', ')})`);
+async function submitTransactionAs(mspId, functionName, ...args) {
+    const targetMsp = mspId || 'Org1MSP';
+    const c = await getContract(targetMsp);
+    console.log(`Submitting transaction as [${targetMsp}]: ${functionName}(${args.join(', ')})`);
 
     const resultBytes = await c.submitTransaction(functionName, ...args);
     const resultString = Buffer.from(resultBytes).toString('utf8');
@@ -129,10 +155,17 @@ async function submitTransaction(functionName, ...args) {
 }
 
 /**
+ * Submit a transaction using default Org1MSP (backward compatibility).
+ */
+async function submitTransaction(functionName, ...args) {
+    return submitTransactionAs('Org1MSP', functionName, ...args);
+}
+
+/**
  * Evaluate a transaction (read from ledger, no write).
  */
 async function evaluateTransaction(functionName, ...args) {
-    const c = await getContract();
+    const c = await getContract('Org1MSP');
     console.log(`Evaluating transaction: ${functionName}(${args.join(', ')})`);
 
     const resultBytes = await c.evaluateTransaction(functionName, ...args);
@@ -150,19 +183,26 @@ async function evaluateTransaction(functionName, ...args) {
 }
 
 /**
- * Disconnect from the Fabric gateway.
+ * Disconnect from all Fabric gateways.
  */
 function disconnect() {
-    if (gateway) {
-        gateway.close();
-        console.log('Disconnected from Fabric network.');
+    for (const [mspId, gw] of gateways.entries()) {
+        try {
+            gw.close();
+            console.log(`Disconnected ${mspId} from Fabric network.`);
+        } catch (e) {
+            console.warn(`Error disconnecting ${mspId}:`, e.message);
+        }
     }
+    gateways.clear();
+    contracts.clear();
 }
 
 module.exports = {
     connectToFabric,
     getContract,
     submitTransaction,
+    submitTransactionAs,
     evaluateTransaction,
     disconnect,
 };

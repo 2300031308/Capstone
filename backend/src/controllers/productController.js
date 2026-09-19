@@ -152,11 +152,18 @@ async function getAllProducts(req, res, next) {
 async function transferOwnership(req, res, next) {
     try {
         const { productId } = req.params;
-        const { newOwner, newStatus } = req.body;
 
         // 1. Fetch current product from Hyperledger Fabric ledger
-        const rawProduct = await fabricService.evaluateTransaction('getProduct', productId);
-        const currentProduct = typeof rawProduct === 'string' ? JSON.parse(rawProduct) : rawProduct;
+        let currentProduct;
+        try {
+            const rawProduct = await fabricService.evaluateTransaction('getProduct', productId);
+            currentProduct = typeof rawProduct === 'string' ? JSON.parse(rawProduct) : rawProduct;
+        } catch (evalErr) {
+            return res.status(404).json({
+                success: false,
+                error: `Product ${productId} not found in blockchain world state.`,
+            });
+        }
 
         if (!currentProduct) {
             return res.status(404).json({
@@ -165,46 +172,75 @@ async function transferOwnership(req, res, next) {
             });
         }
 
-        // 2. Ownership-based access control: Verify authenticated user's organization matches currentOwner
+        // 2. Derive caller role, organization, and MSP strictly from authenticated JWT claims
         const userOrg = req.user?.organization;
         const userRole = (req.user?.role || '').toLowerCase();
+        const userMsp = req.user?.mspId || (userRole === 'manufacturer' ? 'Org1MSP' : 'Org2MSP');
 
+        // Terminal state check
+        if (currentProduct.status === 'SOLD_TO_CONSUMER') {
+            return res.status(400).json({
+                success: false,
+                error: `Terminal State: Product ${productId} has already been sold to a consumer. No further custody transfers permitted.`,
+            });
+        }
+
+        // 3. Ownership-based access control: Verify authenticated user's organization is current custodian
         if (currentProduct.currentOwner !== userOrg) {
             return res.status(403).json({
                 success: false,
-                error: `Ownership Check Failed: Product ${productId} is currently owned by "${currentProduct.currentOwner}". Your authenticated organization is "${userOrg}". Only the current verified custodian can transfer custody.`,
+                error: `Ownership Check Failed: Product ${productId} is currently in custody of "${currentProduct.currentOwner}". Your authenticated organization is "${userOrg}". Only the verified custodian can transfer custody.`,
             });
         }
 
-        // 3. Validate valid next ownership state along the supply chain lifecycle
-        let targetOwner = newOwner;
-        let targetStatus = newStatus;
+        // 4. Strict state machine transition: client-supplied newOwner and newStatus are discarded
+        let targetOwner;
+        let targetStatus;
 
         if (userRole === 'manufacturer') {
-            targetOwner = newOwner || 'DistributorOrg';
-            targetStatus = newStatus || 'IN_TRANSIT_TO_DISTRIBUTOR';
+            if (currentProduct.status !== 'REGISTERED') {
+                return res.status(400).json({
+                    success: false,
+                    error: `Invalid Transition: Manufacturer can only transfer products in 'REGISTERED' status. Current status is '${currentProduct.status}'.`,
+                });
+            }
+            targetOwner = 'DistributorOrg';
+            targetStatus = 'IN_TRANSIT_TO_DISTRIBUTOR';
         } else if (userRole === 'distributor') {
-            targetOwner = newOwner || 'RetailerOrg';
-            targetStatus = newStatus || 'DELIVERED_TO_RETAILER';
+            if (currentProduct.status !== 'IN_TRANSIT_TO_DISTRIBUTOR') {
+                return res.status(400).json({
+                    success: false,
+                    error: `Invalid Transition: Distributor can only transfer products in 'IN_TRANSIT_TO_DISTRIBUTOR' status. Current status is '${currentProduct.status}'.`,
+                });
+            }
+            targetOwner = 'RetailerOrg';
+            targetStatus = 'DELIVERED_TO_RETAILER';
         } else if (userRole === 'retailer') {
-            targetOwner = newOwner || 'Consumer';
-            targetStatus = newStatus || 'SOLD_TO_CONSUMER';
+            if (currentProduct.status !== 'DELIVERED_TO_RETAILER') {
+                return res.status(400).json({
+                    success: false,
+                    error: `Invalid Transition: Retailer can only transfer products in 'DELIVERED_TO_RETAILER' status. Current status is '${currentProduct.status}'.`,
+                });
+            }
+            targetOwner = 'Consumer';
+            targetStatus = 'SOLD_TO_CONSUMER';
         } else {
             return res.status(403).json({
                 success: false,
-                error: `Role "${userRole}" is not authorized to initiate supply chain custody transfers.`,
+                error: `Access Denied: Role "${userRole}" is not authorized to execute custody transfers.`,
             });
         }
 
-        // 4. Commit ownership transfer transaction to Fabric ledger
-        const result = await fabricService.submitTransaction(
+        // 5. Submit transaction using the caller's verified Fabric MSP identity
+        const result = await fabricService.submitTransactionAs(
+            userMsp,
             'transferOwnership',
             productId,
             targetOwner,
             targetStatus
         );
 
-        // 5. Log confirmed transaction in real-time activity stream
+        // 6. Log confirmed transaction in real-time activity stream
         logTransactionActivity({
             type: 'TRANSFER_CUSTODY',
             productId,
@@ -223,6 +259,7 @@ async function transferOwnership(req, res, next) {
             data: result,
         });
     } catch (error) {
+        console.error(`[transferOwnership] Error transferring product ${req.params?.productId}:`, error.message);
         next(error);
     }
 }
