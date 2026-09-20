@@ -99,7 +99,7 @@ export default function CustomerDashboard() {
         <div className="dashboard-actions">
           <span className="badge badge-success" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>
             <CheckCircle2 size={13} style={{ marginRight: '5px' }} />
-            Zero-Trust Ledger Verification
+            Fabric Online &bull; mychannel
           </span>
         </div>
       </div>
@@ -112,7 +112,7 @@ export default function CustomerDashboard() {
             Instant Product Authenticity Verification
           </h3>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.92rem' }}>
-            Verify cryptographic authenticity and complete supply chain provenance directly against the Hyperledger Fabric immutable ledger.
+            Scan or enter a Product ID to verify whether the product is authentic and trace its provenance.
           </p>
 
           <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', maxWidth: '560px', margin: '0 auto', flexWrap: 'wrap' }}>
@@ -134,7 +134,7 @@ export default function CustomerDashboard() {
             <button
               type="submit"
               className="btn btn-primary"
-              style={{ minWidth: '120px', height: '42px' }}
+              style={{ minWidth: '130px', height: '42px' }}
               disabled={searchLoading || !searchId.trim()}
             >
               {searchLoading ? 'Verifying...' : 'Verify Product'}
@@ -220,7 +220,7 @@ export default function CustomerDashboard() {
                         : 'badge-danger'
                     }`}
                   >
-                    {searchResult.authentic ? 'Cryptographically Authenticated' : searchResult.status}
+                    {searchResult.authentic ? 'AUTHENTIC PRODUCT' : (searchResult.status || 'UNVERIFIED')}
                   </span>
                 </div>
                 <span className="font-mono text-sm text-muted">ID: {searchResult.productId}</span>
@@ -233,7 +233,7 @@ export default function CustomerDashboard() {
                 onClick={() => navigate(`/history?id=${searchResult.productId}`)}
               >
                 <History size={13} style={{ marginRight: '4px' }} />
-                <span>Provenance History</span>
+                <span>Provenance Timeline</span>
               </button>
               <button
                 className="btn btn-secondary btn-sm"
@@ -246,13 +246,41 @@ export default function CustomerDashboard() {
             </div>
           </div>
 
+          {/* Product Details - 6 Core Fields */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', padding: '16px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '16px' }}>
+            <div>
+              <span className="meta-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Product ID</span>
+              <span className="font-mono text-bold text-primary" style={{ fontSize: '0.95rem' }}>{searchResult.productId}</span>
+            </div>
+            <div>
+              <span className="meta-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Product Name</span>
+              <strong style={{ fontSize: '0.95rem' }}>{searchResult.productName}</strong>
+            </div>
+            <div>
+              <span className="meta-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Batch Number</span>
+              <span className="batch-tag">{searchResult.batchNumber}</span>
+            </div>
+            <div>
+              <span className="meta-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Manufacturer</span>
+              <strong style={{ fontSize: '0.95rem' }}>{searchResult.manufacturer}</strong>
+            </div>
+            <div>
+              <span className="meta-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Current Owner</span>
+              <strong style={{ fontSize: '0.95rem' }}>{searchResult.currentOwner}</strong>
+            </div>
+            <div>
+              <span className="meta-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Current Status</span>
+              <StatusBadge status={searchResult.currentStatus || searchResult.status} />
+            </div>
+          </div>
+
           {/* Cryptographic Proof Evidence */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
               gap: '12px',
-              padding: '12px',
+              padding: '14px',
               background: 'var(--bg-main)',
               borderRadius: '8px',
               border: '1px solid var(--border)',
@@ -260,134 +288,151 @@ export default function CustomerDashboard() {
             }}
           >
             <div>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Data Integrity (SHA-256)</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                <CheckCircle2 size={14} color={searchResult.dataIntegrity === 'Verified' ? 'var(--success)' : 'var(--danger)'} />
-                <strong style={{ fontSize: '0.88rem' }}>{searchResult.dataIntegrity || 'Verified'}</strong>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>SHA-256 data integrity</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                <CheckCircle2 size={15} color={searchResult.dataIntegrity === 'Verified' ? 'var(--success)' : 'var(--danger)'} />
+                <strong style={{ fontSize: '0.88rem' }}>SHA-256 Integrity &rarr; {searchResult.dataIntegrity || 'Verified'}</strong>
               </div>
             </div>
             <div>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Digital Signature (ECDSA)</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                <CheckCircle2 size={14} color={searchResult.digitalSignature === 'Valid' ? 'var(--success)' : 'var(--danger)'} />
-                <strong style={{ fontSize: '0.88rem' }}>{searchResult.digitalSignature || 'Valid'}</strong>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>ECDSA digital signature</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                <CheckCircle2 size={15} color={searchResult.digitalSignature === 'Valid' ? 'var(--success)' : 'var(--danger)'} />
+                <strong style={{ fontSize: '0.88rem' }}>ECDSA Digital Signature &rarr; {searchResult.digitalSignature || 'Valid'}</strong>
               </div>
             </div>
             <div>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Origin Signer</span>
-              <strong style={{ fontSize: '0.88rem' }}>{searchResult.manufacturerIdentity || 'Verified'} (Org1MSP)</strong>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Manufacturer Identity</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                <CheckCircle2 size={15} color={searchResult.manufacturerIdentity === 'Verified' ? 'var(--success)' : 'var(--danger)'} />
+                <strong style={{ fontSize: '0.88rem' }}>Manufacturer Identity &rarr; {searchResult.manufacturerIdentity || 'Verified'}</strong>
+              </div>
             </div>
             <div>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>Current Custodian</span>
-              <strong style={{ fontSize: '0.88rem' }}>{searchResult.currentOwner}</strong>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', padding: '16px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-            <div>
-              <span className="meta-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Registered Manufacturer</span>
-              <strong style={{ fontSize: '0.95rem' }}>{searchResult.manufacturer}</strong>
-            </div>
-            <div>
-              <span className="meta-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Current Custody</span>
-              <strong style={{ fontSize: '0.95rem' }}>{searchResult.currentOwner}</strong>
-            </div>
-            <div>
-              <span className="meta-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Batch / Lot</span>
-              <span className="batch-tag">{searchResult.batchNumber}</span>
-            </div>
-            <div>
-              <span className="meta-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>Ledger State</span>
-              <StatusBadge status={searchResult.currentStatus || searchResult.status} />
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Signer Identity</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                <span className="badge badge-default" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>
+                  {searchResult.signerMsp || 'Org1MSP'}
+                </span>
+              </div>
             </div>
           </div>
 
           {searchResult.description && (
-            <p style={{ marginTop: '14px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+            <p style={{ marginBottom: '16px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
               {searchResult.description}
             </p>
           )}
 
           {/* Provenance Step Timeline */}
-          <div style={{ marginTop: '20px' }}>
-            <h4 style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
-              Fabric Provenance Chain of Custody
+          <div>
+            <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
+              Supply-Chain Provenance &amp; Chain of Custody
             </h4>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <div
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: '6px',
-                  border: '1px solid',
-                  borderColor: searchResult.status === 'REGISTERED' ? 'var(--primary)' : 'var(--border)',
-                  background: searchResult.status === 'REGISTERED' ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-main)',
-                  fontSize: '0.85rem',
-                }}
-              >
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>ORIGIN (Org1MSP)</span>
-                <strong>{searchResult.manufacturer}</strong>
-              </div>
+            {(() => {
+              const activeStatus = searchResult.currentStatus || searchResult.status;
+              const isRegistered = activeStatus === 'REGISTERED';
+              const isDistributorActive = activeStatus === 'IN_TRANSIT_TO_DISTRIBUTOR' || activeStatus === 'RECEIVED_BY_DISTRIBUTOR';
+              const isRetailerActive = activeStatus === 'IN_TRANSIT_TO_RETAILER' || activeStatus === 'DELIVERED_TO_RETAILER' || activeStatus === 'RECEIVED_BY_RETAILER';
+              const isConsumerActive = activeStatus === 'SOLD_TO_CONSUMER';
 
-              <ArrowRight size={14} color="var(--text-muted)" />
+              const distComplete = isDistributorActive || isRetailerActive || isConsumerActive;
+              const retComplete = isRetailerActive || isConsumerActive;
 
-              <div
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: '6px',
-                  border: '1px solid',
-                  borderColor: searchResult.status === 'IN_TRANSIT_TO_DISTRIBUTOR' ? 'var(--primary)' : 'var(--border)',
-                  background: searchResult.status === 'IN_TRANSIT_TO_DISTRIBUTOR' ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-main)',
-                  fontSize: '0.85rem',
-                }}
-              >
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>DISTRIBUTION (Org2MSP)</span>
-                <strong>Logistics Network</strong>
-              </div>
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      border: '1px solid',
+                      borderColor: isRegistered ? 'var(--primary)' : 'var(--border)',
+                      background: isRegistered ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-main)',
+                      fontSize: '0.85rem',
+                      flex: '1 1 180px',
+                    }}
+                  >
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem', textTransform: 'uppercase' }}>Manufacturer</span>
+                    <strong>{searchResult.manufacturer}</strong>
+                    <div style={{ fontSize: '0.75rem', color: isRegistered ? 'var(--primary)' : 'var(--success)', marginTop: '2px' }}>
+                      {isRegistered ? '● Current Custodian' : '✓ Origin Certified'}
+                    </div>
+                  </div>
 
-              <ArrowRight size={14} color="var(--text-muted)" />
+                  <ArrowRight size={14} color="var(--text-muted)" />
 
-              <div
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: '6px',
-                  border: '1px solid',
-                  borderColor: searchResult.status === 'DELIVERED_TO_RETAILER' ? 'var(--primary)' : 'var(--border)',
-                  background: searchResult.status === 'DELIVERED_TO_RETAILER' ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-main)',
-                  fontSize: '0.85rem',
-                }}
-              >
-                <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem' }}>RETAIL POINT (Org2MSP)</span>
-                <strong>Authorized Partner</strong>
-              </div>
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      border: '1px solid',
+                      borderColor: isDistributorActive ? 'var(--primary)' : 'var(--border)',
+                      background: isDistributorActive ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-main)',
+                      fontSize: '0.85rem',
+                      flex: '1 1 180px',
+                    }}
+                  >
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem', textTransform: 'uppercase' }}>Distributor</span>
+                    <strong>{distComplete ? (searchResult.currentOwner === 'DistributorOrg' ? searchResult.currentOwner : 'Logistics Partner') : 'Pending Transfer'}</strong>
+                    <div style={{ fontSize: '0.75rem', color: isDistributorActive ? 'var(--primary)' : distComplete ? 'var(--success)' : 'var(--text-muted)', marginTop: '2px' }}>
+                      {isDistributorActive ? '● Current Custodian' : distComplete ? '✓ Custody Transferred' : '○ Pending Dispatch'}
+                    </div>
+                  </div>
 
-              <ArrowRight size={14} color="var(--text-muted)" />
+                  <ArrowRight size={14} color="var(--text-muted)" />
 
-              <div
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: '6px',
-                  border: '1px solid',
-                  borderColor: searchResult.status === 'SOLD_TO_CONSUMER' ? 'var(--success)' : 'var(--border)',
-                  background: searchResult.status === 'SOLD_TO_CONSUMER' ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-main)',
-                  fontSize: '0.85rem',
-                  color: searchResult.status === 'SOLD_TO_CONSUMER' ? 'var(--success)' : 'inherit',
-                }}
-              >
-                <span style={{ display: 'block', fontSize: '0.72rem' }}>CONSUMER STATE</span>
-                <strong>{searchResult.status === 'SOLD_TO_CONSUMER' ? 'Consumer Validated' : 'Pending Sale'}</strong>
-              </div>
-            </div>
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      border: '1px solid',
+                      borderColor: isRetailerActive ? 'var(--primary)' : 'var(--border)',
+                      background: isRetailerActive ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-main)',
+                      fontSize: '0.85rem',
+                      flex: '1 1 180px',
+                    }}
+                  >
+                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.72rem', textTransform: 'uppercase' }}>Retailer</span>
+                    <strong>{retComplete ? (searchResult.currentOwner === 'RetailerOrg' ? searchResult.currentOwner : 'Retail Store') : 'Pending Delivery'}</strong>
+                    <div style={{ fontSize: '0.75rem', color: isRetailerActive ? 'var(--primary)' : retComplete ? 'var(--success)' : 'var(--text-muted)', marginTop: '2px' }}>
+                      {isRetailerActive ? '● Current Custodian' : retComplete ? '✓ Delivered to Store' : '○ Pending Delivery'}
+                    </div>
+                  </div>
+
+                  <ArrowRight size={14} color="var(--text-muted)" />
+
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      border: '1px solid',
+                      borderColor: isConsumerActive ? 'var(--success)' : 'var(--border)',
+                      background: isConsumerActive ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-main)',
+                      fontSize: '0.85rem',
+                      flex: '1 1 180px',
+                      color: isConsumerActive ? 'var(--success)' : 'inherit',
+                    }}
+                  >
+                    <span style={{ display: 'block', fontSize: '0.72rem', textTransform: 'uppercase', color: isConsumerActive ? 'var(--success)' : 'var(--text-muted)' }}>Consumer</span>
+                    <strong>{isConsumerActive ? 'Consumer Validated' : 'Pending Sale'}</strong>
+                    <div style={{ fontSize: '0.75rem', marginTop: '2px', color: isConsumerActive ? 'var(--success)' : 'var(--text-muted)' }}>
+                      {isConsumerActive ? '✓ Final Ownership' : '○ Not Yet Sold'}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
 
-      {/* Available Catalog / Genuine Products Registered */}
+      {/* Recently Verified Products (Reduced Customer-Oriented List) */}
       <div className="card modern-card">
         <div className="card-header-flex">
           <div>
-            <h3 className="card-title">Verified Ledger Catalog</h3>
+            <h3 className="card-title">Recently Verified Products</h3>
             <p className="card-desc">
-              All authentic goods registered and certified by authorized enterprise manufacturers on Hyperledger Fabric.
+              Select a recent product recorded on the ledger to inspect its cryptographic validity and provenance.
             </p>
           </div>
         </div>
@@ -398,7 +443,7 @@ export default function CustomerDashboard() {
           <div className="empty-state-box">
             <Boxes size={36} color="var(--text-muted)" style={{ marginBottom: '12px' }} />
             <h4>No Ledger Assets Available</h4>
-            <p>No products have been registered yet by authorized manufacturers.</p>
+            <p>No products have been registered yet on the blockchain.</p>
           </div>
         ) : (
           <div className="table-responsive">
@@ -407,15 +452,12 @@ export default function CustomerDashboard() {
                 <tr>
                   <th>Product ID</th>
                   <th>Product Name</th>
-                  <th>Category</th>
-                  <th>Batch Number</th>
-                  <th>Manufacturer</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Authentication</th>
+                  <th>Current Status</th>
+                  <th style={{ textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {catalogProducts.map((p) => (
+                {catalogProducts.slice(0, 5).map((p) => (
                   <tr key={p.productId}>
                     <td>
                       <span className="font-mono text-bold text-primary">{p.productId}</span>
@@ -423,21 +465,17 @@ export default function CustomerDashboard() {
                     <td>
                       <strong>{p.productName}</strong>
                     </td>
-                    <td>{p.category || 'General'}</td>
-                    <td>
-                      <span className="batch-tag">{p.batchNumber}</span>
-                    </td>
-                    <td>{p.manufacturer}</td>
                     <td>
                       <StatusBadge status={p.status} />
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <button
-                        className="btn btn-primary btn-xs"
+                        className="btn btn-secondary btn-xs"
                         onClick={() => handleSelectProduct(p)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                       >
-                        <ShieldCheck size={12} style={{ marginRight: '4px' }} />
-                        Verify
+                        <ShieldCheck size={12} color="var(--primary)" />
+                        <span>Verify</span>
                       </button>
                     </td>
                   </tr>
@@ -452,7 +490,7 @@ export default function CustomerDashboard() {
       <div style={{ marginTop: '20px', padding: '16px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '14px' }}>
         <Lock size={20} color="var(--primary)" />
         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-          <strong>Tamper-Proof Consumer Protection:</strong> Every product record is permanently recorded on Hyperledger Fabric channel <code>mychannel</code> with SHA-256 digital signatures and cryptographic proof of origin. Records cannot be altered, spoofed, or deleted.
+          <strong>Tamper-Proof Consumer Protection:</strong> Product provenance is recorded on Hyperledger Fabric with cryptographic proof of origin. Ownership changes are recorded as traceable blockchain transactions.
         </div>
       </div>
 
