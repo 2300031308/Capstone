@@ -17,6 +17,7 @@ import ProductDetails from './pages/ProductDetails';
 import TransferCustody from './pages/TransferCustody';
 import PublicVerify from './pages/PublicVerify';
 import ProvenanceHistory from './pages/ProvenanceHistory';
+import ProductTracking from './pages/ProductTracking';
 import { ShieldCheck } from 'lucide-react';
 
 export default function App() {
@@ -69,10 +70,12 @@ function AppRoutes() {
         element={<Navigate to="/register" replace />}
       />
 
-      {/* 3. Public Verification & Provenance History Routes (Unauthenticated & Authenticated) */}
+      {/* 3. Public Verification, Tracking & Provenance History Routes (Unauthenticated & Authenticated) */}
       <Route path="/verify" element={<PublicVerify />} />
       <Route path="/history" element={<ProvenanceHistory />} />
       <Route path="/history/:productId" element={<ProvenanceHistory />} />
+      <Route path="/track" element={<ProductTracking />} />
+      <Route path="/track/:productId" element={<ProductTracking />} />
 
       {/* 4. Authenticated Application Shell & Protected Routes */}
       <Route
@@ -170,6 +173,14 @@ function AppRoutes() {
                     <Route
                       path="history/:productId"
                       element={<ProvenanceHistory />}
+                    />
+                    <Route
+                      path="track"
+                      element={<ProductTracking />}
+                    />
+                    <Route
+                      path="track/:productId"
+                      element={<ProductTracking />}
                     />
 
                     {/* Role Dashboard Fallback */}

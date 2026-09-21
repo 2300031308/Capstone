@@ -7,6 +7,7 @@
 
 const fabricService = require('../services/fabricService');
 const cryptoService = require('../services/cryptoService');
+const trackingService = require('../services/trackingService');
 const { logTransactionActivity } = require('./networkController');
 
 /**
@@ -173,8 +174,14 @@ async function transferOwnership(req, res, next) {
         }
 
         // 2. Derive caller role, organization, and MSP strictly from authenticated JWT claims
-        const userOrg = req.user?.organization;
         const userRole = (req.user?.role || '').toLowerCase();
+        const defaultOrgForRole =
+            userRole === 'manufacturer' ? 'ManufacturerOrg' :
+            userRole === 'distributor' ? 'DistributorOrg' :
+            userRole === 'retailer' ? 'RetailerOrg' :
+            userRole === 'customer' ? 'Consumer' : null;
+
+        const userOrg = req.user?.organization || defaultOrgForRole;
         const userMsp = req.user?.mspId || (userRole === 'manufacturer' ? 'Org1MSP' : 'Org2MSP');
 
         // Terminal state check
@@ -343,6 +350,39 @@ async function verifyProduct(req, res, next) {
     }
 }
 
+/**
+ * Get comprehensive product tracking and supply chain journey.
+ * GET /api/products/:productId/tracking
+ */
+async function getProductTracking(req, res, next) {
+    try {
+        const { productId } = req.params;
+        const tracking = await trackingService.getProductTracking(productId, { sanitize: false });
+        return res.json({
+            success: true,
+            data: tracking,
+        });
+    } catch (error) {
+        if (error.statusCode === 404) {
+            return res.status(404).json({
+                success: false,
+                error: error.message,
+                data: {
+                    status: 'NOT_FOUND',
+                    authentic: false,
+                    productId: req.params?.productId,
+                    message: error.message,
+                },
+            });
+        }
+        console.error('[getProductTracking] Error:', error.message);
+        return res.status(500).json({
+            success: false,
+            error: 'Unable to retrieve product tracking journey. Please try again.',
+        });
+    }
+}
+
 module.exports = {
     registerProduct,
     getProduct,
@@ -350,4 +390,5 @@ module.exports = {
     transferOwnership,
     getProductHistory,
     verifyProduct,
+    getProductTracking,
 };

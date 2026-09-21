@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   History,
   Building2,
+  Route,
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -29,8 +30,9 @@ export default function Sidebar() {
             ],
           },
           {
-            title: 'Verification',
+            title: 'Verification & Tracking',
             items: [
+              { path: '/track', icon: Route, label: 'Product Tracking' },
               { path: '/verify', icon: ShieldCheck, label: 'Verify Product' },
               { path: '/history', icon: History, label: 'Provenance' },
             ],
@@ -48,8 +50,9 @@ export default function Sidebar() {
             ],
           },
           {
-            title: 'Audit & Verification',
+            title: 'Audit & Tracking',
             items: [
+              { path: '/track', icon: Route, label: 'Product Tracking' },
               { path: '/verify', icon: ShieldCheck, label: 'Verify Shipment', tag: 'O3' },
               { path: '/history', icon: History, label: 'Audit Trail', tag: 'O5' },
             ],
@@ -67,8 +70,9 @@ export default function Sidebar() {
             ],
           },
           {
-            title: 'Authentication',
+            title: 'Authentication & Tracking',
             items: [
+              { path: '/track', icon: Route, label: 'Product Tracking' },
               { path: '/verify', icon: ShieldCheck, label: 'Inbound Verification', tag: 'O3' },
               { path: '/history', icon: History, label: 'Product Provenance', tag: 'O5' },
             ],
@@ -82,6 +86,7 @@ export default function Sidebar() {
             title: 'Consumer Portal',
             items: [
               { path: '/customer/dashboard', icon: ShieldCheck, label: 'Authenticity Check' },
+              { path: '/track', icon: Route, label: 'Product Tracking' },
               { path: '/verify', icon: ShieldCheck, label: 'Verify Product', tag: 'O3' },
               { path: '/history', icon: History, label: 'Provenance Timeline', tag: 'O5' },
             ],

@@ -10,7 +10,8 @@
     "test:ledger": "node test/ledgerVerificationTest.js",
     "test:custody": "node test/ownershipTransferTest.js",
     "test:api": "node test/transferHttpApiTest.js",
-    "test:public": "node test/publicVerificationTest.js"
+    "test:public": "node test/publicVerificationTest.js",
+    "test:tracking": "node test/productTrackingTest.js"
   },
   "dependencies": {
     "@grpc/grpc-js": "^1.12.5",

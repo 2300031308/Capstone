@@ -9,9 +9,10 @@ const api = axios.create({
 });
 
 // Request interceptor: Attach JWT token if user is logged in
+// Prioritize sessionStorage for tab-isolated enterprise authentication, fallback to localStorage
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -31,9 +32,12 @@ api.interceptors.response.use(
       window.location.pathname === '/login' ||
       window.location.pathname === '/register' ||
       window.location.pathname.startsWith('/verify') ||
-      window.location.pathname.startsWith('/history');
+      window.location.pathname.startsWith('/history') ||
+      window.location.pathname.startsWith('/track');
 
     if (error.response?.status === 401 && !isPublicPath) {
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login?expired=true';
@@ -59,6 +63,7 @@ export const authApi = {
 export const publicApi = {
   verify: (productId) => api.get(`/public/products/${encodeURIComponent(productId)}/verify`),
   getHistory: (productId) => api.get(`/public/products/${encodeURIComponent(productId)}/history`),
+  getTracking: (productId) => api.get(`/public/products/${encodeURIComponent(productId)}/tracking`),
 };
 
 export const productApi = {
@@ -68,6 +73,7 @@ export const productApi = {
   verify: (productId) => api.get(`/products/${productId}/verify`),
   transfer: (productId, transferData) => api.post(`/products/${productId}/transfer`, transferData),
   getHistory: (productId) => api.get(`/products/${productId}/history`),
+  getTracking: (productId) => api.get(`/products/${encodeURIComponent(productId)}/tracking`),
 };
 
 export const networkApi = {

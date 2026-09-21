@@ -36,4 +36,7 @@ router.post(
 // Product provenance history: Accessible to all participants (O5)
 router.get('/:productId/history', authenticateToken, productController.getProductHistory);
 
+// Product tracking journey: Accessible to all authenticated participants
+router.get('/:productId/tracking', authenticateToken, productController.getProductTracking);
+
 module.exports = router;

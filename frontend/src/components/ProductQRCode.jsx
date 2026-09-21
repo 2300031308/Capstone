@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { QrCode, Download, Check } from 'lucide-react';
 
-export default function ProductQRCode({ productId, size = 140, showDownload = false }) {
+export default function ProductQRCode({ productId, size = 140, showDownload = false, target = 'track' }) {
   const canvasRef = useRef(null);
   const [downloaded, setDownloaded] = useState(false);
   const [error, setError] = useState(null);
@@ -19,10 +19,12 @@ export default function ProductQRCode({ productId, size = 140, showDownload = fa
   useEffect(() => {
     if (!canvasRef.current || !productId) return;
 
-    // Construct configurable public verification URL without exposing secrets
+    // Construct configurable public tracking URL without exposing secrets
     const cleanId = String(productId).trim();
     const baseUrl = (import.meta.env.VITE_PUBLIC_VERIFICATION_URL || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/+$/, '');
-    const qrValue = `${baseUrl}/verify?id=${encodeURIComponent(cleanId)}`;
+    const qrValue = target === 'verify'
+      ? `${baseUrl}/verify?id=${encodeURIComponent(cleanId)}`
+      : `${baseUrl}/track/${encodeURIComponent(cleanId)}`;
 
     QRCode.toCanvas(
       canvasRef.current,

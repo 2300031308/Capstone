@@ -20,4 +20,7 @@ router.get('/products/:productId/verify', publicController.verifyProductPublic);
 // Public Blockchain Provenance History
 router.get('/products/:productId/history', publicController.getProductHistoryPublic);
 
+// Public Product Tracking & Journey
+router.get('/products/:productId/tracking', publicController.getProductTrackingPublic);
+
 module.exports = router;

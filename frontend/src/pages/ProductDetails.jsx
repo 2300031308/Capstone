@@ -21,6 +21,7 @@ import {
   Lock,
   Clock,
   History,
+  Route,
 } from 'lucide-react';
 
 export default function ProductDetails() {
@@ -155,6 +156,10 @@ export default function ProductDetails() {
         <div className="header-button-group">
           <button className="btn btn-secondary btn-sm" onClick={() => navigate('/products')}>
             &larr; Back to Catalog
+          </button>
+          <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/track/${product.productId}`)}>
+            <Route size={13} style={{ marginRight: '5px' }} />
+            <span>Track Journey</span>
           </button>
           <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/history?id=${product.productId}`)}>
             <History size={13} style={{ marginRight: '5px' }} />

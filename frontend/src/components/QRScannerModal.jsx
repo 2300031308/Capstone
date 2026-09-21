@@ -43,10 +43,15 @@ export default function QRScannerModal({ isOpen, onClose, onScan }) {
     const clean = raw.trim();
 
     try {
-      if (clean.startsWith('http://') || clean.startsWith('https://') || clean.includes('/verify?id=')) {
+      if (clean.startsWith('http://') || clean.startsWith('https://') || clean.includes('/verify') || clean.includes('/track')) {
         const urlObj = new URL(clean.startsWith('http') ? clean : `https://domain.local${clean}`);
         const idParam = urlObj.searchParams.get('id');
         if (idParam) return idParam.trim();
+
+        const pathSegments = urlObj.pathname.split('/').filter(Boolean);
+        if (pathSegments.length >= 2 && (pathSegments[0] === 'track' || pathSegments[0] === 'verify' || pathSegments[0] === 'history')) {
+          return decodeURIComponent(pathSegments[1]).trim();
+        }
       }
     } catch {
       // not a valid URL structure, treat as plain ID

@@ -14,6 +14,7 @@
 
 const fabricService = require('../services/fabricService');
 const cryptoService = require('../services/cryptoService');
+const trackingService = require('../services/trackingService');
 
 /**
  * Convert Fabric protobuf timestamp to standard ISO and formatted string.
@@ -263,7 +264,49 @@ async function getProductHistoryPublic(req, res, next) {
     }
 }
 
+/**
+ * Public Product Tracking & Journey
+ * GET /api/public/products/:productId/tracking
+ */
+async function getProductTrackingPublic(req, res, next) {
+    try {
+        const { productId } = req.params;
+        const cleanId = (productId || '').trim();
+
+        if (!cleanId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Product ID is required to retrieve tracking journey.',
+            });
+        }
+
+        const tracking = await trackingService.getProductTracking(cleanId, { sanitize: true });
+        return res.json({
+            success: true,
+            data: tracking,
+        });
+    } catch (error) {
+        if (error.statusCode === 404) {
+            return res.status(404).json({
+                success: false,
+                data: {
+                    status: 'NOT_FOUND',
+                    authentic: false,
+                    productId: req.params?.productId,
+                    message: error.message,
+                },
+            });
+        }
+        console.error('[getProductTrackingPublic] Error:', error.message);
+        return res.status(500).json({
+            success: false,
+            error: 'Unable to retrieve public product tracking journey. Please try again later.',
+        });
+    }
+}
+
 module.exports = {
     verifyProductPublic,
     getProductHistoryPublic,
+    getProductTrackingPublic,
 };

@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, ArrowRight, LogOut, LayoutDashboard } from 'lucide-react';
+import { ShieldCheck, ArrowRight, LogOut, LayoutDashboard, Route } from 'lucide-react';
 
 export default function PublicNavbar() {
   const { user, isAuthenticated, logout, getRoleDashboard } = useAuth();
@@ -53,6 +53,10 @@ export default function PublicNavbar() {
 
         {/* Action Buttons */}
         <div className="public-nav-actions">
+          <Link to="/track" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Route size={14} color="var(--primary)" />
+            <span>Track Product</span>
+          </Link>
           <Link to="/verify" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <ShieldCheck size={14} color="var(--primary)" />
             <span>Verify Product</span>

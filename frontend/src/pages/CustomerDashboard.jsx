@@ -17,6 +17,7 @@ import {
   ExternalLink,
   History,
   XCircle,
+  Route,
 } from 'lucide-react';
 
 export default function CustomerDashboard() {
@@ -230,6 +231,13 @@ export default function CustomerDashboard() {
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
                 className="btn btn-primary btn-sm"
+                onClick={() => navigate(`/track/${searchResult.productId}`)}
+              >
+                <Route size={13} style={{ marginRight: '4px' }} />
+                <span>Track Journey</span>
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
                 onClick={() => navigate(`/history?id=${searchResult.productId}`)}
               >
                 <History size={13} style={{ marginRight: '4px' }} />
